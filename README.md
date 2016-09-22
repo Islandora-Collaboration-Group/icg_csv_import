@@ -7,6 +7,8 @@ the MODS metadata, binary data files, and related information that are required 
 
 -Currently the module ingests only objects composed of one binary data file. It does not ingest objects such as two-image postcards, books, and so on.
 
+-Currently the module ingests only objects composed of one binary data file. It does not ingest objects such as two-image postcards, books, and so on.
+
 -All bugs, feature requests and improvement suggestions are tracked at the [DuraSpace JIRA](https://jira.duraspace.org/browse/ISLANDORA).-
 
 
