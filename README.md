@@ -5,6 +5,8 @@ ICG CSV Import Module
 This module is designed to ingest a single CSV file containing one or more object records, with each record representing 
 the MODS metadata and related information required to create one Islandora/Fedora object.
 
+-Currently the module ingests only objects composed of one binary data file. It does not ingest objects such as two-image postcards, books, and so on.
+
 -All bugs, feature requests and improvement suggestions are tracked at the [DuraSpace JIRA](https://jira.duraspace.org/browse/ISLANDORA).-
 
 
