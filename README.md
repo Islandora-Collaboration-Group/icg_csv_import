@@ -7,7 +7,9 @@ the MODS metadata and related information required to create one Islandora/Fedor
 
 -Currently the module ingests only objects composed of one binary data file. It does not ingest objects such as two-image postcards, books, and so on.
 
--All bugs, feature requests and improvement suggestions are tracked at the [DuraSpace JIRA](https://jira.duraspace.org/browse/ISLANDORA).-
+<!--- All bugs, feature requests and improvement suggestions are tracked at the [DuraSpace JIRA](https://jira.duraspace.org/browse/ISLANDORA). -->
+
+-All bugs, feature requests and improvement suggestions should be submitted as an Issue on the ICG github repo (https://github.com/Islandora-Collaboration-Group/icg_csv_import).-
 
 
 ## Requirements
@@ -31,8 +33,8 @@ Install it as any other Islandora Drupal module in sites/all/modules.
 
 ## Documentation
 
-The input data file, or CSV file, may employ any reasonable field seperator.  Commas are most often used, hence the term comma-seperated-values or CSV, 
-but other delimiters like tabs or semi-colons may be used.  'Pipe' or vertical bar delimiters are used to seperate multiple values **within** fields, so pipes should NOT be used to delimit the fields themselves.  Values should be enclosed in quotation marks (double quotes, not single) when possible. For sample CSV files see the "examples" directory. 
+The input data file, or CSV file, may employ any reasonable field separator.  Commas are most often used, hence the term comma-separated-values or CSV, 
+but other delimiters like tabs or semi-colons may be used.  'Pipe' or vertical bar delimiters are used to separate multiple values **within** fields, so pipes should NOT be used to delimit the fields themselves.  Values should be enclosed in quotation marks (double quotes, not single) when possible. For sample CSV files see the "examples" directory. 
  
 The batch process used to import CSV data is file-driven, with most of the necessary input stored directly in the CSV data file.  The module's user interface may be employed to assist with building a suitably structured CSV file.  
 
@@ -175,7 +177,7 @@ The complete set of Keys and their corresponding behavior in the system are docu
 
 ##### Pipes
 
-A pipe, the vertical bar character (|), is used to seperate multiple values within a single field.  For example, the following sample of MODS metadata contains multiple "alternative" titles, and this kind of construct is easy to import.
+A pipe, the vertical bar character (|), is used to separate multiple values within a single field.  For example, the following sample of MODS metadata contains multiple "alternative" titles, and this kind of construct is easy to import.
 
     <mods>
    		<titleInfo type='alternative'>
@@ -227,7 +229,7 @@ A portion of the output from import of our example data, is depicted in the imag
 
 The highlighted column in this image was prepended to the CSV data during processing.  The first cell in this column is a time-stamp recording the date and time when the import was initiated. The values in the cells below are the PIDs of the objects generated during the import process, and these PIDs are prefixed with a hashtag to render each line in this output file as a comment.  
 
-The output file maintains the field seperator of the input file, so if a true CSV file, with comma field delimiters is used, then a true CSV file is output.  If a tab-delimited file is specified as input, a corresponding tab-delimited file is created as output.
+The output file maintains the field separator of the input file, so if a true CSV file, with comma field delimiters is used, then a true CSV file is output.  If a tab-delimited file is specified as input, a corresponding tab-delimited file is created as output.
 
 Note that all comments, including comment lines (where the first character in the first column is a hashtag), from the input file are echoed, without modification, in the output file.
 
