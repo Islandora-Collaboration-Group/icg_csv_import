@@ -3,7 +3,9 @@
 ICG CSV Import Module
 
 This module is designed to ingest a single CSV file containing one or more object records, with each record representing 
-the MODS metadata and related information required to create one Islandora/Fedora object.
+the MODS metadata, binary data files, and related information that are required to create one Islandora/Fedora object.
+
+-Currently the module ingests only objects composed of one binary data file. It does not ingest objects such as two-image postcards, books, and so on.
 
 -All bugs, feature requests and improvement suggestions are tracked at the [DuraSpace JIRA](https://jira.duraspace.org/browse/ISLANDORA).-
 
@@ -29,8 +31,8 @@ Install it as any other Islandora Drupal module in sites/all/modules.
 
 ## Documentation
 
-The input data file, or CSV file, may employ any reasonable field seperator.  Commas are most often used, hence the term comma-seperated-values or CSV, 
-but other delimiters like tabs or semi-colons may be used.  'Pipe' or vertical bar delimiters are used to seperate multiple values **within** fields, so pipes should NOT be used to delimit the fields themselves.  Values should be enclosed in quotation marks (double quotes, not single) when possible. For sample CSV files see the "examples" directory. 
+The input data file, or CSV file, may employ any reasonable field separator.  Commas are most often used, hence the term comma-separated-values or CSV, 
+but other delimiters like tabs or semi-colons may be used.  'Pipe' or vertical bar delimiters are used to separate multiple values **within** fields, so pipes should NOT be used to delimit the fields themselves.  Values should be enclosed in quotation marks (double quotes, not single) when possible. For sample CSV files see the "examples" directory. 
  
 The batch process used to import CSV data is file-driven, with most of the necessary input stored directly in the CSV data file.  The module's user interface may be employed to assist with building a suitably structured CSV file.  
 
