@@ -1,9 +1,8 @@
+# ICG CSV Import Module
+
 ## Introduction
 
-ICG CSV Import Module
-
-This module is designed to ingest a single CSV file containing one or more object records, with each record representing 
-the MODS metadata, binary data files, and related information that are required to create one Islandora/Fedora object.
+This module processes a single CSV file that contains the MODS metadata, file names for binary data files, and related information required to create Islandora/Fedora object. Each row represents one object.
 
 -Currently the module ingests only objects composed of one binary data file. It does not ingest objects such as two-image postcards, books, and so on.
 
@@ -13,7 +12,7 @@ the MODS metadata, binary data files, and related information that are required 
 
 ## Requirements
 
-This module requires the following modules/libraries:
+This module requires the following library:
 
 * [Tuque](https://github.com/islandora/tuque)
 
@@ -24,7 +23,7 @@ Tuque is expected to be in one of two paths:
 
 ## Installation
 
-Install it as any other Islandora Drupal module in sites/all/modules.
+Install this module as any other Islandora Drupal module in sites/all/modules.
 
 ## Configuration
 
@@ -32,8 +31,14 @@ There is no Drupal configuration menu for this module.
 
 ## Documentation
 
-The input data file, or CSV file, may employ any reasonable field separator.  Commas are most often used, hence the term comma-separated-values or CSV, but other delimiters like tabs or semi-colons may be used.  'Pipe' or vertical bar delimiters are used to separate multiple values **within** fields, so pipes should NOT be used to delimit the fields themselves.  Values should be enclosed in quotation marks (double quotes, not single) when possible. For sample CSV files see the "examples" directory. 
+The input data file, referred to here as a CSV file, may actually employ any reasonable field separator. Commas are most often used, hence the term comma-separated-values or CSV, but other delimiters like tabs or semi-colons may be used. 
 
+'Pipe' or vertical bar delimiters are used to separate multiple values **within** fields, so pipes should NOT be used to delimit the fields themselves.  Values should be enclosed in quotation marks (double quotes, not single) when possible.
+
+"Smith, John|Jones, William"
+
+For sample CSV files see the "examples" directory. 
+ 
 The batch process used to import CSV data is file-driven, with most of the necessary input stored directly in the CSV data file. [A separate module is being developed that will provides a GUI to assist with building a suitably structured CSV file.]
 
 ### CSV File Structure
