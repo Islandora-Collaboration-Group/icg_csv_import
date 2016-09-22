@@ -352,7 +352,7 @@ Current maintainers:
 
 * [Mark McFate](https://github.com/DigitalGrinnell)
 * [Steve Young](https://github.com/hamhpc)
-* [Peter MacDonald](https://github.com/petermacdonald)
+* [Peter MacDonald](https://github.com/dhinitiative)
 * [Jessika Drmacich](https:/github.com/jgd1)
 
 ## Development
