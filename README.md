@@ -29,13 +29,12 @@ Install it as any other Islandora Drupal module in sites/all/modules.
 
 ## Configuration
 
-[Don't know if any Drupal configure menu will be necessary.]
+There is no Drupal configuration menu for this module.
 
 ## Documentation
 
-The input data file, or CSV file, may employ any reasonable field separator.  Commas are most often used, hence the term comma-separated-values or CSV, 
-but other delimiters like tabs or semi-colons may be used.  'Pipe' or vertical bar delimiters are used to separate multiple values **within** fields, so pipes should NOT be used to delimit the fields themselves.  Values should be enclosed in quotation marks (double quotes, not single) when possible. For sample CSV files see the "examples" directory. 
- 
+The input data file, or CSV file, may employ any reasonable field separator.  Commas are most often used, hence the term comma-separated-values or CSV, but other delimiters like tabs or semi-colons may be used.  'Pipe' or vertical bar delimiters are used to separate multiple values **within** fields, so pipes should NOT be used to delimit the fields themselves.  Values should be enclosed in quotation marks (double quotes, not single) when possible. For sample CSV files see the "examples" directory. 
+
 The batch process used to import CSV data is file-driven, with most of the necessary input stored directly in the CSV data file.  The module's user interface may be employed to assist with building a suitably structured CSV file.  
 
 ### CSV File Structure
@@ -207,6 +206,29 @@ XPaths with predicates, highlighted in blue, are illusrated in the next image.
 
 ![CSV XPaths with Predicates](documentation/images/Fossils-05.png?raw=true)
 
+#### MODS Element Attributes
+
+You may add XML attributes to the values if those attributes are allowed in the MODS schema. Add the attribute after the falue in this way:
+
+If you declare an attribute in the column header, that attribute applies to all values in the column and you don't have to declare it in each cell value.
+
+/mods/genre[@authority="marcgenre"]  |
+-------------------------------------|
+correspondence  |
+photograph      |
+
+If you want to override that default attribute you may do so if the attribute is attached to the last element in the XPath:
+
+/mods/genre[@authority="marcgenre"]  |
+-------------------------------------|
+correspondence[@authority="aat"]     |
+photograph                           |
+
+If the attribute you are putting in the column header is not an attribute of the last element, you cannot override it.
+
+/mods/name[@type="personal"]/namePart|
+-------------------------------------|
+Smith, John                          |
 #### Constants
 
 Take note of the data in the highlighted portion of the image below. The data in these columns are 'constants'; the same value appears in every row within a particular column.   
