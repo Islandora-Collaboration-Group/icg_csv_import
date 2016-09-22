@@ -172,11 +172,12 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
         '#type' => 'checkbox',
         '#title' => t('CSV First Row Already Contains the Field Mapping.'),
         '#description' => t('Check this box if the first row of your CSV file already contains mapped XPaths.  Note that checking this option also carries the assumption that your object LABELs will be determined based on the /mods/titleInfo/title field.'),
-        '#default_value' => FALSE,
+        '#default_value' => TRUE,
         '#prefix' => "<br/><hr/>",
         '#suffix' => "<hr/>",
       );
 
+      /*
       $form['options_fieldset']['content_model'] = array(
         '#type' => 'select',
         '#title' => t('Destination Content Model'),
@@ -198,6 +199,7 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
         '#required' => FALSE,
         '#options' => _icg_ajax_callback_xml_form($selected_cmodel, $xml_forms),
       );
+      */
 
       $form['namespace'] = array(
         '#type' => 'select',
