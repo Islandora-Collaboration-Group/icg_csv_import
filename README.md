@@ -11,7 +11,6 @@ the MODS metadata and related information required to create one Islandora/Fedor
 
 -All bugs, feature requests and improvement suggestions should be submitted as an Issue on the ICG github repo (https://github.com/Islandora-Collaboration-Group/icg_csv_import).-
 
-
 ## Requirements
 
 This module requires the following modules/libraries:
@@ -35,21 +34,21 @@ There is no Drupal configuration menu for this module.
 
 The input data file, or CSV file, may employ any reasonable field separator.  Commas are most often used, hence the term comma-separated-values or CSV, but other delimiters like tabs or semi-colons may be used.  'Pipe' or vertical bar delimiters are used to separate multiple values **within** fields, so pipes should NOT be used to delimit the fields themselves.  Values should be enclosed in quotation marks (double quotes, not single) when possible. For sample CSV files see the "examples" directory. 
 
-The batch process used to import CSV data is file-driven, with most of the necessary input stored directly in the CSV data file.  The module's user interface may be employed to assist with building a suitably structured CSV file.  
+The batch process used to import CSV data is file-driven, with most of the necessary input stored directly in the CSV data file. [A separate module is being developed that will provides a GUI to assist with building a suitably structured CSV file.]
 
 ### CSV File Structure
 
-As indicated above, this module relies on a suitably structured CSV file to drive its batch processing, but the structure of tht file can be relatively flexible.  A small sample of CSV data from a fossils collection in the Grinnell College Geology Collection is used, below, to illustrate features of this CSV file structure.  The samples here are annotated screen grabs of the data as it appears in Excel, but any means of editing/preparing CSV data may be employed.
+As indicated above, this module relies on a suitably structured CSV file to drive its batch processing, but the structure of that file can be relatively flexible.  A small sample of CSV data from a fossils collection in the Grinnell College Geology Collection is used, below, to illustrate features of this CSV file structure. The samples here are annotated screen grabs of the data as it appears in Excel, but any means of editing/preparing CSV data may be employed.
 
 A good example of a CSV file can be found in Google Sheets at https://docs.google.com/spreadsheets/d/159ry2KDKYLHssGjPi3ypNtOy6IN6cgvNLg1O2TsFuTI/edit?usp=sharing.  This 'template' also includes a bit of documenation describing the process and best practices.
 
-The initial/raw CSV data for our example looks like this in Excel:
+The initial/raw CSV data for our example (before we add the row of MODS XPaths) looks like this in Excel:
 
 ![Raw CSV Data](documentation/images/Fossils-01.png?raw=true)
 
 In the preceeding image, the row of data highlighted in blue contains CSV 'headers', or descriptions, while all other rows contain data to be imported.  Note that some cells are empty and some cells contain commas within.  Both empty cells and embedded commas are permitted, but if commas are present in any data field, care should be taken to save the file with tab or other non-comma delimiters.  Or, if data is exported in a true CSV file, care should be taken to ensure that all values are enclosed in double quotes. 
 
-It's good practice to introduce an additional column into your CSV data as illustrated below.
+It's good practice to introduce an additional column into your CSV data containing row numbers as illustrated below to ensure you can restore the original order if necessary.
 
 ![CSV Data with 'Import Index' Added](documentation/images/Fossils-02.png?raw=true)
 
