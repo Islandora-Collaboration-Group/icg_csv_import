@@ -609,36 +609,12 @@ function _icg_make_new_object($existing, $parent_pid, $ns, $cmodel, $label, $mod
     }
   }
 
-  // Ingest the new, or updated $existing, object into Fedora.
+  // Ingest the new object into Fedora.
   $pid = $object->id;
-  try {
-    $repo->ingestObject($object);
-  } catch (Exception $e) {
-    watchdog($module_name, "Caught Fedora exception: %e.", array('%e' => $e->getMessage()), WATCHDOG_ERROR);
-    return FALSE;
-  }
+  if (!$existing) { islandora_add_object($object); }
 
-  // Now, get the MODS-to-DC transform.
-  if ($transform) {
-    $xsl = new DOMDocument();
-    if (!$xsl->load($transform)) {
-      die("Failed to load Transform file '$transform!'");
-    }
-    $xslt = new XSLTProcessor();
-    $xslt->importStyleSheet($xsl);
-
-    // Apply the MODS-to-DC transform.
-    $document = new DOMDocument();
-    $document->loadXml($object['MODS']->content);
-    if ($doc = $xslt->transformToDoc($document)) {
-      $after = $doc->saveXML();
-      $object['DC']->setContentFromString($after);
-    }
-  }
-
-  // OK, my hook_CMODEL_PID_islandora_object_ingested function is NOT firing!  So
-  // take the bull by the horns here.
-  _make_derivatives($object);
+  // Do some derivative work if needed.
+  if ($obj && $temp) { islandora_run_derivatives($object, 'OBJ'); }
 
   // Perform any object post-creation cleanup.
   module_invoke_all('create_object_post_ops', $pid);
@@ -661,7 +637,7 @@ function _icg_make_new_object($existing, $parent_pid, $ns, $cmodel, $label, $mod
  * Make derivatives.
  *
  * @param AbstractObject $object - The ingested object in need of derivatives.
- */
+ *
 function _make_derivatives($object) {
   $module_name = basename(__FILE__, '.module');
   $cmodels = $object->models;
@@ -705,16 +681,18 @@ function _make_node($doc, $parent, $element, $attributes, $value=NULL) {
     exit("Unrecoverable exception encountered in _make_node.createElement( ).");
   }
 
-  if (!$text = $doc->createTextNode($value)) {   // save $value as new $text node
-    drupal_set_message("createTextNode($value) returned FALSE.  Check your data!", 'error');
-    return FALSE;
-  }
+  if ($value) {
+    if (!$text = $doc->createTextNode($value)) {   // save $value as new $text node
+      drupal_set_message("createTextNode($value) returned FALSE.  Check your data!", 'error');
+      return FALSE;
+    }
 
-  try {
-    $node->appendChild($text);   // attach the $value to the new $node
-  } catch (Exception $e) { // catch all exceptions
-    drupal_set_message("appendChild(text) exception.  Message: " . $e->getMessage(), 'error');
-    return FALSE;
+    try {
+      $node->appendChild($text);   // attach the $value to the new $node
+    } catch (Exception $e) { // catch all exceptions
+      drupal_set_message("appendChild(text) exception.  Message: " . $e->getMessage(), 'error');
+      return FALSE;
+    }
   }
 
   if ($attributes) {
