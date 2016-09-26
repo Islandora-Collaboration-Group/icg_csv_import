@@ -66,7 +66,7 @@ function icg_csv_import_form_submit($form, &$form_state) {
       $defaults = _fetch_CSV_defaults( );
 
       // Open the constants file, if any
-      if (isset($form_state['all_values']['constants_csv'])) {
+      if (isset($form_state['all_values']['constants_csv']) && is_object($form_state['all_values']['constants_csv'])) {
         $constants = $form_state['all_values']['constants_csv']->uri;
         $delimiter = ($form_state['all_values']['csv_delimiter'] ? $form_state['all_values']['csv_delimiter'] : "\t");
         if ($file_handle = fopen($constants, 'r')) {
