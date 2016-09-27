@@ -22,7 +22,7 @@ function icg_csv_import_build_batch($form_state) {
     'init_message' => t('Commencing'),
     'progress_message' => t('Processed @current out of @total.'),
     'error_message' => t('An error occurred during processing'),
-    'finished' => 'icg_csv_import_import_finished',
+    'finished' => 'icg_csv_import_import_finish ed',
   ) ;
 
   $csv_filename = $form_state['all_values']['csv_file']->uri;
@@ -44,6 +44,21 @@ function icg_csv_import_build_batch($form_state) {
       foreach ($constants as $key => $value) {
         $headers[] = $key;
       }
+    }
+
+    // Check the $headers for errors.
+    $result = icg_csv_import_header_errors($headers, $form_state['all_values']);
+    if (!$result) {
+      drupal_set_message("An error was detected by icg_csv_import_header_errors and the import was aborted.", 'error');
+      return FALSE;
+    } else if (is_array($result)) {
+      foreach ($result as $cell => $message) {
+        drupal_set_message("An Xpath error was detected in '$cell'.  Message: $message", 'error');
+
+      }
+      return FALSE;
+    } else {
+      $mods_skeleton = $result;  // $mods_skeleton is a valid MODS XML string.
     }
 
     // Parse the $csv_filename into constituent parts.
@@ -385,6 +400,101 @@ function icg_csv_import_batch_item($head, $row, $controls) {
 
   return $pid;
 }
+
+
+/**
+ * icg_csv_import_header_errors - This is derived from icg_csv_import_batch_item as
+ *   a function to validate Xpaths (CSV header row) before the batch process is started.
+ *
+ * @param array() $head - XPaths from the structured CSV header row.
+ * @param array() $controls - Process controls passed from the user interface. Elements mostly
+ *   from $form_state['all_values'] include:
+ *
+ *   constants - Associative array of constants, xpath => value pairs to be added to each row of
+ *     the CSV and corresponding new object.
+ *   labelXPath - The XPath to the data to be used as new object labels.
+ *   csv_delimiter - The character specified as the field delimiter in the CSV file.
+ *
+ * @return string|bool|array - An associative array of $head => message errors, FALSE
+ * if the function failed to build a MODS skeleton, or a valid MODS skeleton string.
+ */
+function icg_csv_import_header_errors($head, $controls) {
+  $module_name = basename(__FILE__, '.module');
+  static $ns = 'mods';
+  static $nsU = 'http://www.loc.gov/mods/v3';
+  $return = FALSE;
+
+  // Is $head[0] a timestamp?
+  $update = strtotime($head[0]);
+
+  // Read the remaining controls.
+  $constants = (isset($controls['constants']) ? $controls['constants'] : FALSE);
+  $labelXPath = (isset($controls['label_field']) ? $controls['label_field'] : FALSE);
+  $delimiter = ($controls['csv_delimiter'] ? $controls['csv_delimiter'] : "\t");
+
+  $headers = $head;
+
+  // Invoke all hook_validate_csv_header functions.  Pass the array of $headers (xpaths).
+  // Each hook function should return FALSE if there are no problems;
+  // otherwise $problems will be an associative array of
+  // content => message pairs indicating the source of
+  // the problem (content) and a message explaining what's wrong.
+  $problems = module_invoke_all('validate_csv_header', $headers);
+  foreach ($problems as $problem) {
+    if ($problem) {
+      // @TODO...Stop the process, or report the issues an move on?
+      return $problem;
+    }
+  }
+
+  // Build a simple MODS DOMDocument to test the Xpath structures.
+  $doc = new DOMDocument('1.0');
+  $doc->preserveWhiteSpace = false;
+  $doc->formatOutput = true;
+
+  $xmlns = $doc->createAttribute('xmlns');
+  $xmlns->value = $nsU;
+  $root = _make_node($doc, $doc, $ns, $xmlns, NULL);
+
+  $length = count($headers);
+  $cmodel = $label = NULL;
+
+  // Primary loop...where the rubber meets the road.
+  //
+  // Loop $i through $headers adding empty data elements to $doc along the way.
+  // Skip all empty or comment $headers cells.
+  // Look for the optional "special" $headers 'LABEL, 'OBJ_PREFIX', 'OBJ' and 'CMODEL' which mark the
+  // columns that contain the object label, OBJ content filepath, and content model, respectively.
+
+  // In case of an $update, shift the $first column one to the right.
+  $first = ($update ? 1 : 0);
+
+  for ($i=$first, $parent=NULL; $i<$length; $i++) {
+    $header = trim($headers[$i]);
+    if (empty($header) || _startsWith($header, '#')) { continue; }   // $headers[$i] is blank or a comment...skip this column
+
+    if ($header === "LABEL") {
+      $label = TRUE;
+    } else if ($header === "OBJ_PREFIX") {
+      $obj1 = TRUE;
+    } else if ($header === "OBJ") {
+      $obj2 = TRUE;
+    } else if ($header === "CMODEL") {
+      $cmodel = TRUE;
+    } else if ($header === $labelXPath) {
+      $label = TRUE;
+    }
+
+    $parent = _generateNodeFromXPath($doc, $parent, $header, NULL);
+  }
+
+  if ($mods = $doc->saveXML()) {
+    return $mods;
+  } else {
+    return FALSE;
+  }
+}
+
 
 // ------------------------ Private functions ----------------------------
 
