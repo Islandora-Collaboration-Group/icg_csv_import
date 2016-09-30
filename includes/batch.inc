@@ -327,8 +327,8 @@ function icg_csv_import_batch_item($head, $row, $controls) {
       if (!strstr($data,'|')) {
         $parent = _generateNodeFromXPath($doc, $parent, $header, $data);
       } else {
-        $parts = explode('|', $data);
-        $parent = _generateNodeFromXPath($doc, $parent, $header, $parts);
+        $data_parts = explode('|', $data);
+        $parent = _generateNodeFromXPath($doc, $parent, $header, $data_parts);
       }
     }
   }
@@ -337,7 +337,6 @@ function icg_csv_import_batch_item($head, $row, $controls) {
   $obj = '';
   if (!empty($obj1)) { $obj = $obj1; }
   if (!empty($obj2)) { $obj .= $obj2; }
-
 
   $mods = $doc->saveXML();
 
@@ -578,18 +577,17 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
   if ($attr) {
     $attrArray = _parseAttributes($attr);
     foreach ($attrArray as $name => $value) {
+      // Found attribute with no value while processing data... skip this attribute.
+      if ($data && empty($value)) { continue; }
+
       try {
         if (!$attributes[$name] = $doc->createAttribute($name)) {
-          $msg = "createAttribute($name) returned FALSE.  Check your Xpath!";
+          $msg = "createAttribute($name) in '$xpath' returned FALSE.  Check your Xpath!";
           throw new Exception($msg);
         }
         $attributes[$name]->value = $value;
-        if (empty($attributes[$name]->value)) {
-          $msg = "The value of attribute '$name=$value' is not valid.  Check your XPath!";
-          throw new Exception($msg);
-        }
       } catch (Exception $e) { // catch all exceptions
-        drupal_set_message("Attribute error in '$name'. Message: " . $e->getMessage(), 'error');
+        drupal_set_message("Attribute error in '$name' while parsing '$xpath'. Message: " . $e->getMessage(), 'error');
         return;
       }
     }
@@ -893,15 +891,27 @@ function _has_index($txt) {
  * Parse a [bracketed] single or multiple attribute clause of the form
  * general form [@single='a'] or [@one='a' and @two='b' and @three='c'].
  *
+ * Note that when parsing attributes in the header it is permissible to omit
+ * the equal sign (=) and value for any/all attributes.  For example, this
+ * syntax is valid in the header:  [@one='a' and @two and @three='c'].
+ * However, attributes in the data MUST conform to the @name='value' syntax.
+ *
  * @param $attr string - A [bracketed] attribute spec.
  * @return array - Attribute name->value pairs.
  */
-function _parseAttributes($attr) {
+function _parseAttributes($attr, $header=TRUE) {
   $attrubutes = array();
   $attrs = explode(' and ', $attr);
+
   foreach ($attrs as $a) {
     $pair = trim($a, '@');
-    list($name, $val) = explode('=', $pair);
+    if ($header && !strpos($pair,'=')) {
+      $name = $pair;
+      $val = NULL;
+    } else {
+      list($name, $val) = explode('=', $pair);
+    }
+
     $attributes[$name] = trim(trim($val,"'"),'"');
   }
   return $attributes;
