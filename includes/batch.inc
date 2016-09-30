@@ -240,6 +240,8 @@ function icg_csv_import_batch_item($head, $row, $controls) {
   static $ns = 'mods';
   static $nsU = 'http://www.loc.gov/mods/v3';
 
+  static $xmlns = array('xmlns'=>'http://www.loc.gov/mods/v3', 'xmlns:mods'=>'http://www.loc.gov/mods/v3', 'xmlns:xlink'=>'http://www.w3.org/1999/xlink', 'xmlns:xsi'=>'http://www.w3.org/2001/XMLSchema-instance');
+
   $parent_pid = $controls['parent_pid'];
   $namespace = $controls['namespace'];
   $inactive = $controls['ingest_as_inactive'];
@@ -282,10 +284,9 @@ function icg_csv_import_batch_item($head, $row, $controls) {
   $doc = new DOMDocument('1.0');
   $doc->preserveWhiteSpace = false;
   $doc->formatOutput = true;
-
-  $xmlns = $doc->createAttribute('xmlns');
-  $xmlns->value = $nsU;
-  $root = _make_node($doc, $doc, $ns, $xmlns, NULL);
+  $mods = $doc->createElementNS($nsU, $ns);
+  // $mods = $doc->createElement('mods');
+  $doc->appendChild($mods);
 
   $length = min(count($headers), count($row));
   $obj = $cmodel = $label = NULL;
@@ -338,6 +339,17 @@ function icg_csv_import_batch_item($head, $row, $controls) {
   if (!empty($obj1)) { $obj = $obj1; }
   if (!empty($obj2)) { $obj .= $obj2; }
 
+  /* Now, attach the proper namespace attributes to our /mods root.
+  $root = $doc->documentElement;
+  foreach ($xmlns as $name => $value) {
+    if (!$attr = $doc->createAttribute($name, $value)) {
+      drupal_set_message("createAttribute($name, $value) error!", 'error');
+    } else {
+      $root->appendChild($attr);
+    }
+  }*/
+
+  // Save the completed $doc XML as $mods.
   $mods = $doc->saveXML();
 
   /* Save $doc as a temporary file for debugging purposes.
@@ -541,9 +553,11 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
   static $ns = 'mods';
   static $nsU = 'http://www.loc.gov/mods/v3';
 
+  $attributes = array( );
+
   // If no parent is provided, assume that we begin from the document root
   $root = $doc->documentElement;
-  if (!$parent) { $parent = $root; };
+  if (!$parent) { $parent = $root; }
 
   // Trim the $xpath and grab the next element name in the $xpath
   $trimmed = trim($xpath, '/');
@@ -554,7 +568,7 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
   $element = array_shift($parts);
   // dpr("element:$element\n");
 
-  $index = $attr = $attributes = FALSE;
+  $index = $attr = FALSE;
 
   // Look ahead for a node $index in $parts.  If none is present assume $index = 1.
   if (isset($parts[0]) && _is_unsigned_integer($parts[0])) {    // element has an index
@@ -573,7 +587,6 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
   }
 
   // If there are one or more $attributes, build their XML.
-  $attributes = array( );
   if ($attr) {
     $attrArray = _parseAttributes($attr);
     foreach ($attrArray as $name => $value) {
@@ -779,10 +792,12 @@ function _make_derivatives($object) {
  * @return DOMElement - Returns the new XML element.
  */
 function _make_node($doc, $parent, $element, $attributes, $value=NULL) {
+  static $ns = 'mods';
+  static $nsU = 'http://www.loc.gov/mods/v3';
   // if (empty($value) && empty($attribute)) { return $parent; }  // no $value or $attribute, return the $parent
 
   try {
-    $node = $doc->createElement($element);   // create a new $node with name $element
+    $node = $doc->createElementNS($nsU, $element);   // create a new $node with name $element
   } catch (Exception $e) {
     echo "Caught createElement exception in _make_node: ".$e->getMessage()."\n";
     echo "Element name is '".$element."' and value is '".$value."'\n";
