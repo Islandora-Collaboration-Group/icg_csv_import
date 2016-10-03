@@ -1,7 +1,25 @@
 <?php
 
 /**
+ * The following command-line bits might be useful in your terminal...
+ *
+ * cd /var/www/drupal/sites/default/
+ * drush vset icg_csv_import_csv_file_uri '/vagrant/shared/DGImportTemplate - DGImportTemplate.tsv'
+ * drush vset icg_csv_import_constants_file_uri '/vagrant/shared/DGImportTemplate - DGConstantsTemplate.tsv'
+ * drush vset icg_csv_import_parent_pid 'islandora:sp_large_image_collection'
+ * drush vset icg_csv_import_username 'ICG'
+ * drush vset icg_csv_import_password 'anything'
+ * drush vset icg_csv_import_namespace 'islandora'
+ * drush vset icg_csv_import_delimiter 'tab'
+ * drush vset icg_csv_import_inactive TRUE
+ * drush vset icg_csv_import_label_xpath '/mods/titleInfo/title'
+ *
+ */
+
+/**
  * CSV Import Form Callback
+ *
+ * This form is markup ONLY for review, with submit and cancel buttons.
  *
  * @param $form
  * @param $form_state
@@ -9,24 +27,96 @@
  * @return mixed
  */
 function icg_csv_import_form($form, &$form_state, $collection) {
-  // If this is the first time the user hits the form page:
-  if (!isset($form_state['values'])) {
-    $form_state['step'] = 0;
-    $form_state['all_values'] = array();
-  }
 
-  // Build the form steps
-  try {
-    $step = $form_state['step'];
-    $current_form = icg_csv_import_get_form($step, $collection, $form_state);
-  } catch (Exception $e) {
-    drupal_set_message(t($e->getMessage()), 'error');
-    return FALSE;
-  }
+  // This form is markup ONLY, with submit and cancel buttons.
+  // $form['#validate'][] = 'icg_csv_import_validate';
 
-  // Return the current page for the step
-  return $current_form;
+  $form['csv_file'] = array(
+    '#markup' => "The selected CSV file is: <b>".variable_get('icg_csv_import_csv_file_uri', 'Undefined!')."</b><br/>",
+  );
+
+  $form['constants_file'] = array(
+    '#markup' => "The selected constants file is: <b>".variable_get('icg_csv_import_constants_file_uri', 'None')."</b><br/>",
+  );
+
+  $form['delimiter'] = array(
+    '#markup' => "The selected file delimiter is: <b>".variable_get('icg_csv_import_delimiter', 'tab')."</b><br/>",
+  );
+
+  $form['parent_pid'] = array(
+    '#markup' => "The collection/parent PID is: <b>".variable_get('icg_csv_import_parent_pid', 'Undefined!')."</b><br/>",
+  );
+
+  $form['namespace'] = array(
+    '#markup' => "New objects will be ingested into the '<b>".variable_get('icg_csv_import_namespace', 'islandora')."</b>' namespace.<br/>"
+  );
+
+  $inactive = variable_get('icg_csv_import_inactive', TRUE);
+  if ($inactive) {
+    $msg = "The import will produce <b>INACTIVE</b> objects.<br/>";
+  } else {
+    $msg = "The import will produce <b>ACTIVE</b> objects.<br/>";
+  }
+  $form['inactive'] = array(
+    '#markup' => $msg,
+  );
+
+  $form['parent_pid'] = array(
+    '#markup' => "The collection/parent PID is: <b>".variable_get('icg_csv_import_parent_pid', 'Undefined!')."</b><br/>",
+  );
+
+  $form['label_xpath'] = array(
+    '#markup' => "The object LABEL xpath is: <b>".variable_get('icg_csv_import_label_xpath', '/mods/titleInfo/title')."</b><br/>",
+  );
+
+  $username = variable_get('icg_csv_import_username', '');
+  if (empty($username)) {
+    $msg = "The content download user name is <b>blank</b>.  No content download will be attempted.<br/>";
+  } else {
+    $msg = "The content download user name is: <b>".$username."</b><br/>";
+  }
+  $form['username'] = array(
+    '#markup' => $msg,
+  );
+
+  $password = variable_get('icg_csv_import_password', '');
+  if (empty($password)) {
+    $msg = "The content download password is <b>blank</b>.  No content download will be attempted.<p/>";
+  } else {
+    $msg = "The content download password <b>is defined</b>, but hidden.<p/>";
+  }
+  $form['password'] = array(
+    '#markup' => $msg,
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+
+  $form['cancel'] = array(
+    '#type' => 'button',
+    '#value' => t('Cancel'),
+    '#prefix' => '     ',
+    '#attributes' => array('onClick' => 'history.go(-2); return true;'),
+    '#post_render' => array('_change_button_type'),
+  );
+
+  return $form;
 }
+
+/**
+ * Helper for above lifted from https://www.drupal.org/node/133861#comment-4002698.
+ *
+ * @param $markup
+ * @param $element
+ * @return mixed
+ */
+function _change_button_type($markup, $element) {
+  $markup = str_replace('type="submit', 'type="button', $markup);
+  return $markup;
+}
+
 
 /**
  * Implements hook_form_submit().
@@ -36,62 +126,18 @@ function icg_csv_import_form($form, &$form_state, $collection) {
  */
 function icg_csv_import_form_submit($form, &$form_state) {
   module_load_include('inc', 'icg_csv_import', 'includes/batch');
-
-  // Save our current values to all_values.
-  $form_state['all_values'] += $form_state['values'];
-  # dpm($form_state);
-
-  switch ($form_state['step']):
-    case 0:
-      // Save our current values to all_values.
-      $form_state['all_values'] += $form_state['values'];
-      // Do not submit the form
-      $form_state['rebuild'] = TRUE;
-      // Instead go to the next page.
-      $form_state['step']++;
-      break;
-
-    case 1:
-
-      /* Do not submit the form
-      $form_state['rebuild'] = TRUE;
-      // Instead go to the next page.
-      $form_state['step']++;
-      // pm($form_state);
-      break;
-
-    case 2:  */
-
-      // Fetch defaults
-      $defaults = _fetch_CSV_defaults( );
-
-      // Open the constants file, if any
-      if (isset($form_state['all_values']['constants_csv']) && is_object($form_state['all_values']['constants_csv'])) {
-        $constants = $form_state['all_values']['constants_csv']->uri;
-        $delimiter = ($form_state['all_values']['csv_delimiter'] ? $form_state['all_values']['csv_delimiter'] : "\t");
-        if ($file_handle = fopen($constants, 'r')) {
-          $headers = fgetcsv($file_handle, 0, $delimiter);  // Read first line to get xpath/header info
-          $data = fgetcsv($file_handle, 0, $delimiter);     // Read the next line to get data
-          for ($i = 0; $i < count($headers); $i++) {  // Save the data in $form_state['all_values']['constants']
-            $form_state['all_values']['constants'][$headers[$i]] = $data[$i];
-          }
-          fclose($file_handle);  // Close file connection
-        }
-      }
-
-      // Do something with all_values and redirect away from the form!
-      icg_csv_import_build_batch($form_state);
-      if (module_exists('devel')) { dpm($form_state); }
-      break;
-
-  endswitch;
+  icg_csv_import_build_batch( );
 }
+
+/**
+ * @TODO...everything below is from the OLD icg_csv_import user interface.  It is no longer needed here.  Remove it!
+ *
 
 /**
  * @param $form
  * @param $form_state
  * @return array
- */
+ *
 function icg_csv_import_form_ajax_callback($form, &$form_state) {
   $commands = array();
   $commands[] = ajax_command_replace('#xml-dropdown-update',
@@ -100,6 +146,7 @@ function icg_csv_import_form_ajax_callback($form, &$form_state) {
     drupal_render($form['namespace']));
   return array('#type' => 'ajax', '#commands' => $commands);
 }
+*/
 
 /**
  * @param $step
@@ -108,7 +155,7 @@ function icg_csv_import_form_ajax_callback($form, &$form_state) {
  *
  * @return array
  * @throws \Exception
- */
+ *
 function icg_csv_import_get_form($step, $collection, &$form_state) {
   $form = array();
 
@@ -200,7 +247,7 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
         '#required' => FALSE,
         '#options' => _icg_ajax_callback_xml_form($selected_cmodel, $xml_forms),
       );
-      */
+
 
       $form['namespace'] = array(
         '#type' => 'select',
@@ -280,7 +327,7 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
         foreach($forms as $fdata) {
           if ($fdata['form_name'] === $selected_form) {
             $form_state['collection_policy']['selected'] = $fdata;
-            $path = drupal_get_path('module', 'xml_form_builder');
+            $path = variable_get_path('module', 'xml_form_builder');
             $form_state['all_values']['transform'] = $path.'/transforms/'.$fdata['transform'];
             $label_field = '/mods';
             foreach($fdata['title_field'] as $tfield) {
@@ -356,18 +403,20 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
       if (module_exists('devel')) { dpm($form); }
 
       break;
-      */
+
   endswitch;
 
   return $form;
 }
+
+ */
 
 /**
  * @param $merged
  * @param $step3
  * @param $form_state
  * @param bool $parent
- */
+ *
 function _icg_csv_import_make_review_form($merged, &$step3, $form_state, $fieldset=FALSE) {
   static $fieldsets = array( );
   static $csvColumns = array( );
@@ -456,13 +505,14 @@ function _icg_csv_import_make_review_form($merged, &$step3, $form_state, $fields
   }
 }
 
+ */
 
 /**
  * Form validation handler.
  *
  * @param $form
  * @param $form_state
- */
+ *
 function icg_csv_import_validate($form, &$form_state) {
   $validators = array('file_validate_extensions' => array('csv tsv txt'));
 
@@ -489,3 +539,4 @@ function icg_csv_import_validate($form, &$form_state) {
   }
 }
 
+ */

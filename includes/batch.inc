@@ -7,12 +7,13 @@
  */
 
 /**
- * Handle form submission. Read the CSV into a set of batch operations
- * and fire them off.
+ * Read the CSV into a set of batch operations and fire them off.
  *
- * Lifted from https://github.com/GiantRobot/icg_csv_import/blob/7.x-1.x/icg_csv_import.module
+ * Orignially lifted from
+ * https://github.com/GiantRobot/icg_csv_import/blob/7.x-1.x/icg_csv_import.module
+ *
  */
-function icg_csv_import_build_batch($form_state) {
+function icg_csv_import_build_batch( ) {
   $module_name = basename(__FILE__, '.module');
   static $update;
 
@@ -23,31 +24,46 @@ function icg_csv_import_build_batch($form_state) {
     'progress_message' => t('Processed @current out of @total.'),
     'error_message' => t('An error occurred during processing'),
     'finished' => 'icg_csv_import_import_finish ed',
-  ) ;
+  );
 
-  $csv_filename = $form_state['all_values']['csv_file']->uri;
-  $delimiter = ($form_state['all_values']['csv_delimiter'] ? $form_state['all_values']['csv_delimiter'] : "\t");
+  if (($csv_filename = variable_get('icg_csv_import_csv_file_uri', 'Undefined!')) === 'Undefined!') {
+    drupal_set_message("icg_csv_import_csv_file_uri must specify a valid CSV import file path!  This process is aborted!", 'error');
+    return;
+  }
 
+  $delimiter = variable_get('icg_csv_import_delimiter', 'tab');
+  $delimiter = (($delimiter === 'tab') ? "\t" : $delimiter);
+
+  if (($parent_pid = variable_get('icg_csv_import_parent_pid', 'None')) === 'None') {
+    drupal_set_message("icg_csv_import_csv_parent_pid must specify a valid parent collection PID!  This process is aborted!", 'error');
+    return;
+  }
+
+  // OK, open the CSV file and Go!
   if ($handle = fopen($csv_filename, 'r')) {
-    if ($form_state['all_values']['skip_field_mapping']) {
-      $headers = fgetcsv($handle, 0, $delimiter);   // first line is $headers
-    } else {
-      $headers = $form_state['all_values']['crosswalk'];  // get $headers from the crosswalk
-    }
+    $headers = fgetcsv($handle, 0, $delimiter);   // first line is $headers
 
     $format = 'Y-m-d H:i:s';
     $marker = date($format);
 
+    $cData = array( );
+
     // If $constants are defined, append their keys to $headers.
-    $constants = (isset($form_state['all_values']['constants']) ? $form_state['all_values']['constants'] : FALSE);
+    $constants = variable_get('icg_csv_import_constants_file_uri', 'None');
+    $constants = (($constants === 'None') ? FALSE : $constants);
     if (!empty($constants)) {
-      foreach ($constants as $key => $value) {
-        $headers[] = $key;
+      if ($file_handle = fopen($constants, 'r')) {
+        $cHeaders = fgetcsv($file_handle, 0, $delimiter);  // Read first line to get xpath/header info
+        $cData = fgetcsv($file_handle, 0, $delimiter);     // Read the next line to get $cData
+        for ($i = 0; $i < count($cHeaders); $i++) {
+          $headers[] = $cHeaders[$i];
+        }
+        fclose($file_handle);  // Close the constants file connection
       }
     }
 
     // Check the $headers for errors.
-    $result = icg_csv_import_header_errors($headers, $form_state['all_values']);
+    $result = icg_csv_import_header_errors($headers);
     if (!$result) {
       drupal_set_message("An error was detected by icg_csv_import_header_errors and the import was aborted.", 'error');
       return FALSE;
@@ -76,13 +92,13 @@ function icg_csv_import_build_batch($form_state) {
       watchdog($module_name, "Could not open CSV history file '%history'.", array('%history' => $history), WATCHDOG_ERROR);
       return FALSE;
     }
-    // debug("Successfully opened file '$history' to capture CSV import status.");
 
     $record = $headers;
 
     // Determine if a date/time marker is already present in the first $headers cell.  If yes,
     // this process will update the first column, otherwise it will append a new column of data
     // to the history.
+
     if ($previous = strtotime($record[0])) {
       $update = TRUE;
       $record[0] = $marker;
@@ -95,21 +111,17 @@ function icg_csv_import_build_batch($form_state) {
     fputcsv($fp, $record, $delimiter);
     fclose($fp);
 
-    // Get the parent_pid parameter and save it.  @TODO...remove, no longer needed
-    // $parent_pid = $form_state['build_info']['args'][0]->id;
-    // $form_state['all_values']['parent_pid'] = $parent_pid;
-
     // First batch operation...save key parameters
-    $form_state['all_values']['history'] = $history;
-    $form_state['all_values']['update'] = $update;
-    $batch['operations'][] = array('icg_csv_import_remember', array($csv_filename, $form_state['all_values'], $headers));
+    $controls['history'] = $history;
+    $controls['update'] = $update;
+    $batch['operations'][] = array('icg_csv_import_remember', array($csv_filename, $controls, $headers));
 
     // Read and process the CSV file one line at a time
     while ($line = fgetcsv($handle, 0, $delimiter)) {
-      // If $constants is defined, append the $values of $constants to $line
+      // If $constants is defined, append the $cData values to $line
       $full_line = $line;
-      if (!empty($constants)) {
-        foreach ($constants as $key => $value) {
+      if (!empty($cData)) {
+        foreach ($cData as $value) {
           $full_line[] = $value;
         }
       }
@@ -121,7 +133,7 @@ function icg_csv_import_build_batch($form_state) {
   }
 
   // Return path
-  $path = '/islandora/object/'.$form_state['all_values']['parent_pid'];
+  $path = '/islandora/object/'.$parent_pid;
 
   // Set for batch processing...and Go!
   batch_set($batch);
@@ -242,17 +254,17 @@ function icg_csv_import_batch_item($head, $row, $controls) {
 
   static $xmlns = array('xmlns'=>'http://www.loc.gov/mods/v3', 'xmlns:mods'=>'http://www.loc.gov/mods/v3', 'xmlns:xlink'=>'http://www.w3.org/1999/xlink', 'xmlns:xsi'=>'http://www.w3.org/2001/XMLSchema-instance');
 
-  $parent_pid = $controls['parent_pid'];
-  $namespace = $controls['namespace'];
-  $inactive = $controls['ingest_as_inactive'];
+  $parent_pid = variable_get('icg_csv_import_parent_pid');
+  $namespace = variable_get('icg_csv_import_namespace', 'islandora');
+  $inactive = variable_get('icg_csv_import_inactive', TRUE);
+  $constants = variable_get('icg_csv_import_constants_file_uri', '');
+  $delimiter = (variable_get('icg_csv_import_delimiter', 'tab') === 'tab' ? "\t" : variable_get('icg_csv_import_delimiter'));
+  $labelXPath = variable_get('icg_csv_import_label_xpath', '/mods/titleInfo/title');
+  $credentials['username'] = variable_get('icg_csv_import_username', '');
+  $credentials['password'] = variable_get('icg_csv_import_password', '');
+
   $history = $controls['history'];
   $update = $controls['update'];
-  $transform = $controls['transform'];
-  $constants = $controls['constants'];
-  $labelXPath = $controls['label_field'];
-  $credentials['username'] = $controls['credentials_username'];
-  $credentials['password'] = $controls['credentials_password'];
-  $delimiter = ($controls['csv_delimiter'] ? $controls['csv_delimiter'] : "\t");
 
   $format = 'Y-m-d H:i:s';
   $marker = date($format);
@@ -264,8 +276,8 @@ function icg_csv_import_batch_item($head, $row, $controls) {
   // Check for a hashtag (comment) marker at the start of $row.  If found then echo
   // $row into the history file but do NOTHING else.
   if (_startsWith($record[0],'#')) {
-    $fp = fopen($history,'a');    // open the history CSV file to append data
-    fputcsv($fp, $record, $delimiter);            // append $record as-is to the history
+    $fp = fopen($history,'a');            // open the history CSV file to append data
+    fputcsv($fp, $record, $delimiter);    // append $record as-is to the history
     fclose($fp);
     return TRUE;
   }
@@ -275,6 +287,7 @@ function icg_csv_import_batch_item($head, $row, $controls) {
   // are no problems; otherwise it should return an associative array of
   // content -> message pairs indicating the source of the problem (content) and
   // a message explaining what's wrong.
+
   $problems = module_invoke_all('validate_csv', $headers, $record);
   if ($problems) {
     // @TODO...Stop the process, or report the issues an move on?
@@ -362,6 +375,7 @@ function icg_csv_import_batch_item($head, $row, $controls) {
 
   // If we are in $update mode and this record already has a valid PID...purge the existing
   // object's MODS record and force the creation of a new MODS on the same PID ($usePID).
+
   $pattern = "/^".$namespace.":\d+$/";
   $existing = $update;
 
@@ -389,6 +403,7 @@ function icg_csv_import_batch_item($head, $row, $controls) {
 
   // Create an $object, or $update an $existing object, with $mods as it's MODS datastream
   // and return the object's $pid.
+
   if ($pid = _icg_make_new_object($existing, $parent_pid, $namespace, $cmodel, $label, $mods, $transform, $obj, $credentials, $inactive)) {
     if ($update) {
       $record[0] = "# ".$pid;
@@ -415,21 +430,15 @@ function icg_csv_import_batch_item($head, $row, $controls) {
 
 /**
  * icg_csv_import_header_errors - This is derived from icg_csv_import_batch_item as
- *   a function to validate Xpaths (CSV header row) before the batch process is started.
+ *   a function to validate Xpaths (CSV and constants header row) before the
+ *   batch process is started.
  *
  * @param array() $head - XPaths from the structured CSV header row.
- * @param array() $controls - Process controls passed from the user interface. Elements mostly
- *   from $form_state['all_values'] include:
- *
- *   constants - Associative array of constants, xpath => value pairs to be added to each row of
- *     the CSV and corresponding new object.
- *   labelXPath - The XPath to the data to be used as new object labels.
- *   csv_delimiter - The character specified as the field delimiter in the CSV file.
  *
  * @return string|bool|array - An associative array of $head => message errors, FALSE
  * if the function failed to build a MODS skeleton, or a valid MODS skeleton string.
  */
-function icg_csv_import_header_errors($head, $controls) {
+function icg_csv_import_header_errors($head) {
   $module_name = basename(__FILE__, '.module');
   static $ns = 'mods';
   static $nsU = 'http://www.loc.gov/mods/v3';
@@ -438,10 +447,8 @@ function icg_csv_import_header_errors($head, $controls) {
   // Is $head[0] a timestamp?
   $update = strtotime($head[0]);
 
-  // Read the remaining controls.
-  $constants = (isset($controls['constants']) ? $controls['constants'] : FALSE);
-  $labelXPath = (isset($controls['label_field']) ? $controls['label_field'] : FALSE);
-  $delimiter = ($controls['csv_delimiter'] ? $controls['csv_delimiter'] : "\t");
+  // Fetch the remaining controls.
+  $labelXPath = variable_get('icg_csv_import_label_xpath', '/mods/titleInfo/title');
 
   $headers = $head;
 
@@ -450,6 +457,7 @@ function icg_csv_import_header_errors($head, $controls) {
   // otherwise $problems will be an associative array of
   // content => message pairs indicating the source of
   // the problem (content) and a message explaining what's wrong.
+
   $problems = module_invoke_all('validate_csv_header', $headers);
   foreach ($problems as $problem) {
     if ($problem) {

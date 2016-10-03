@@ -28,7 +28,7 @@ function icg_csv_import_menu() {
     'page arguments' => array('icg_csv_import_form', 2),
     'access arguments' => array(2),
     'access callback' => 'icg_csv_access_callback',
-    'file' => 'includes/map_ingest_form.inc',
+    'file' => 'includes/batch_form.inc',
     'type' => MENU_LOCAL_TASK,
   );
   return $items;
