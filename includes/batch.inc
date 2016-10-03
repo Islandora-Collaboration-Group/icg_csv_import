@@ -550,6 +550,7 @@ function _fetch_OBJ($path, $credentials) {
  * @param string $previous
  */
 function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' ) {
+  static $docRoot = '/mods[1]';
   static $ns = 'mods';
   static $nsU = 'http://www.loc.gov/mods/v3';
 
@@ -557,16 +558,14 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
 
   // If no parent is provided, assume that we begin from the document root
   $root = $doc->documentElement;
-  if (!$parent) { $parent = $root; }
+  $parent = (!$parent ? $root : $parent );
 
   // Trim the $xpath and grab the next element name in the $xpath
   $trimmed = trim($xpath, '/');
   $parts = _multiexplode(array('/','[',']'), $trimmed);
-  // $parts = _multiexplode(array('/','['), $trimmed);
 
   // Pop the $element off of the $parts array
   $element = array_shift($parts);
-  // dpr("element:$element\n");
 
   $index = $attr = FALSE;
 
@@ -580,9 +579,6 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
   // Look ahead for an $attribute in $parts
   if (isset($parts[0]) && _startsWith($parts[0], '@')) {   // element has an attribute
     $attr = trim($parts[0],"@] ");
-    // list($attr, $val) = explode('=', $parts[0], 2);
-    // $value = trim($val,"'");
-    // dpr("attribute:$attr=$value\n");
     array_shift($parts);
   }
 
@@ -600,7 +596,8 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
         }
         $attributes[$name]->value = $value;
       } catch (Exception $e) { // catch all exceptions
-        drupal_set_message("Attribute error in '$name' while parsing '$xpath'. Message: " . $e->getMessage(), 'error');
+        drupal_set_message("Attribute error in '$name' while parsing '$xpath'. Message: "
+          . $e->getMessage(), 'error');
         return;
       }
     }
@@ -609,9 +606,6 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
   // Append $element to $previous to make a new $current xpath
   if ($element) { $current = $previous.'/'.$element."[$index]"; }
   if ($attr) { $current .= "[@$attr]"; }
-
-  // $current .= "[$attr='$value']"; }
-  // dpr("current:$current\n");
 
   // If this is not the end of the $xpath, don't set $data!
   if (isset($parts[0])) {
@@ -627,29 +621,37 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
   drupal_set_message("_generateNodeFromXPath element, attribute, text are: '$element', '$attribute->name', '$text'.", 'info');
   drupal_set_message("...................... target is: '$current'.", 'info'); */
 
-  // Search for an existing $current node and make it the $parent.  If none exist, create a new node.
-  $dx = new DOMXPath($doc);
-  $dx->registerNamespace($ns, $nsU);
-  $nodes = $dx->query($current);
-  if ($nodes->length > 0) {     // $current[$index] was found, set $parent to the $index node and move on.
-    $parent = $nodes->item(0);  // $index - 1);
-    // drupal_set_message("...................... found parent '$parent->nodeName'.", 'info');
-  } else {    // $current not found, append a new child node to $parent and make it the new $parent.
-    if (!is_array($text)) {
+  // Search for an existing $current node and make it the $parent.
+  // If none exist, create a new node.
+  // If $current is $docRoot select the document root as the $parent.
+
+  if ($current === $docRoot) {
+    $parent = $root;
+  } else {
+    $dx = new DOMXPath($doc);
+    $dx->registerNamespace($ns, $nsU);
+    $nodes = $dx->query($current);
+
+    // If $current[$index] is found, set $parent to the $index node and move on.
+    // If $current not found, append new child to $parent and make it the $parent.
+    // If multiple $data values exist...make a node from the first, then copy it.
+    if ($nodes->length > 0) {
+      $parent = $nodes->item(0);
+    } else if (!is_array($text)) {
       $parent = _make_node($doc, $parent, $element, $attributes, $text);
-      // drupal_set_message("...................... created node on parent '$parent->nodeName'.", 'info');
-    } else {   // multiple $data values exist...make a node from the first, then copy that node for each remaining
+    } else {
       $original_parent = $parent;
       $parent = _make_node($doc, $parent, $element, $attributes, $text[0]);
       $n = count($text);
       for ($i=1; $i<$n; $i++) {
         _make_node($doc, $original_parent, $element, $attributes, $text[$i]);
-        // drupal_set_message("...................... created node on parent '$parent->nodeName'.", 'info');
       }
     }
   }
 
-  // If there are any $parts left, build the $remainder xpath, pass $current as the last xpath processed, and recurse.
+  // If there are any $parts left, build the $remainder xpath,
+  // pass $current as the last xpath processed, and recurse.
+
   if (isset($parts[0])) {
     $remainder = implode('/',$parts);
     _generateNodeFromXPath($doc, $parent, $remainder, $data, $current);
