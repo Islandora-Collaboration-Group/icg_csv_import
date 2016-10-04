@@ -404,7 +404,7 @@ function icg_csv_import_batch_item($head, $row, $controls) {
   // Create an $object, or $update an $existing object, with $mods as it's MODS datastream
   // and return the object's $pid.
 
-  if ($pid = _icg_make_new_object($existing, $parent_pid, $namespace, $cmodel, $label, $mods, $transform, $obj, $credentials, $inactive)) {
+  if ($pid = _icg_make_new_object($existing, $parent_pid, $namespace, $cmodel, $label, $mods, $obj, $credentials, $inactive)) {
     if ($update) {
       $record[0] = "# ".$pid;
     } else {
@@ -558,7 +558,7 @@ function _fetch_OBJ($path, $credentials) {
  * @param string $previous
  */
 function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' ) {
-  static $docRoot = '/mods[1]';
+  static $docRoot = '/mods:mods';
   static $ns = 'mods';
   static $nsU = 'http://www.loc.gov/mods/v3';
 
@@ -575,13 +575,13 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
   // Pop the $element off of the $parts array
   $element = array_shift($parts);
 
-  $index = $attr = FALSE;
+  $predicate = $attr = FALSE;
 
-  // Look ahead for a node $index in $parts.  If none is present assume $index = 1.
+  // Look ahead for a node $predicate in $parts.  If none is present assume $predicate = 1.
   if (isset($parts[0]) && _is_unsigned_integer($parts[0])) {    // element has an index
-    $index = array_shift($parts);
+    $predicate = array_shift($parts);
   } else {
-    $index = 1;
+    $predicate = 1;
   }
 
   // Look ahead for an $attribute in $parts
@@ -611,9 +611,10 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
     }
   }
 
-  // Append $element to $previous to make a new $current xpath
-  if ($element) { $current = $previous.'/'.$element."[$index]"; }
-  if ($attr) { $current .= "[@$attr]"; }
+  // Append $element to $previous to make a new $query xpath
+  if ($element) { $query = $previous.'/'.$ns.':'.$element; }
+  if ($predicate) { $query .= "[$predicate]"; }
+  if ($attr) { $query .= "[@$attr]"; }
 
   // If this is not the end of the $xpath, don't set $data!
   if (isset($parts[0])) {
@@ -627,23 +628,24 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
   /* Debugging...
   $debug = $doc->saveXML();   // for debugging only!
   drupal_set_message("_generateNodeFromXPath element, attribute, text are: '$element', '$attribute->name', '$text'.", 'info');
-  drupal_set_message("...................... target is: '$current'.", 'info'); */
+  drupal_set_message("...................... target is: '$query'.", 'info'); */
 
-  // Search for an existing $current node and make it the $parent.
+  // Search for an existing $query node and make it the $parent.
   // If none exist, create a new node.
-  // If $current is $docRoot select the document root as the $parent.
+  // If $query is $docRoot select the document root as the $parent.
 
-  if ($current === $docRoot) {
+  if ($query === $docRoot) {
     $parent = $root;
   } else {
     $dx = new DOMXPath($doc);
     $dx->registerNamespace($ns, $nsU);
-    $nodes = $dx->query($current);
+    $nodes = $dx->query($query);
+    $len = $nodes->length;
 
-    // If $current[$index] is found, set $parent to the $index node and move on.
-    // If $current not found, append new child to $parent and make it the $parent.
+    // If $query[$predicate] is found, set $parent to the $predicate node and move on.
+    // If $query not found, append new child to $parent and make it the $parent.
     // If multiple $data values exist...make a node from the first, then copy it.
-    if ($nodes->length > 0) {
+    if ($len > 0) {
       $parent = $nodes->item(0);
     } else if (!is_array($text)) {
       $parent = _make_node($doc, $parent, $element, $attributes, $text);
@@ -658,11 +660,11 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
   }
 
   // If there are any $parts left, build the $remainder xpath,
-  // pass $current as the last xpath processed, and recurse.
+  // pass $query as the last xpath processed, and recurse.
 
   if (isset($parts[0])) {
     $remainder = implode('/',$parts);
-    _generateNodeFromXPath($doc, $parent, $remainder, $data, $current);
+    _generateNodeFromXPath($doc, $parent, $remainder, $data, $query);
   }
 }
 
