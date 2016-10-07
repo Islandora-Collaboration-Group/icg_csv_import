@@ -252,8 +252,6 @@ function icg_csv_import_batch_item($head, $row, $controls) {
   static $ns = 'mods';
   static $nsU = 'http://www.loc.gov/mods/v3';
 
-  static $xmlns = array('xmlns'=>'http://www.loc.gov/mods/v3', 'xmlns:mods'=>'http://www.loc.gov/mods/v3', 'xmlns:xlink'=>'http://www.w3.org/1999/xlink', 'xmlns:xsi'=>'http://www.w3.org/2001/XMLSchema-instance');
-
   $parent_pid = variable_get('icg_csv_import_parent_pid');
   $namespace = variable_get('icg_csv_import_namespace', 'islandora');
   $inactive = variable_get('icg_csv_import_inactive', TRUE);
@@ -298,7 +296,9 @@ function icg_csv_import_batch_item($head, $row, $controls) {
   $doc->preserveWhiteSpace = false;
   $doc->formatOutput = true;
   $mods = $doc->createElementNS($nsU, $ns);
-  // $mods = $doc->createElement('mods');
+  $mods->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:xlink', 'http://www.w3.org/1999/xlink');
+  $mods->setAttributeNS('http://www.w3.org/2000/xmlns/', "xmlns:$ns", $nsU);
+  $mods->setAttributeNS('http://www.w3.org/2000/xmlns/', "xmlns:xsi", 'http://www.w3.org/2001/XMLSchema-instance');
   $doc->appendChild($mods);
 
   $length = min(count($headers), count($row));
@@ -351,16 +351,6 @@ function icg_csv_import_batch_item($head, $row, $controls) {
   $obj = '';
   if (!empty($obj1)) { $obj = $obj1; }
   if (!empty($obj2)) { $obj .= $obj2; }
-
-  /* Now, attach the proper namespace attributes to our /mods root.
-  $root = $doc->documentElement;
-  foreach ($xmlns as $name => $value) {
-    if (!$attr = $doc->createAttribute($name, $value)) {
-      drupal_set_message("createAttribute($name, $value) error!", 'error');
-    } else {
-      $root->appendChild($attr);
-    }
-  }*/
 
   // Save the completed $doc XML as $mods.
   $mods = $doc->saveXML();
@@ -611,7 +601,7 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
     }
   }
 
-  // Append $element to $previous to make a new $query xpath
+  // Append $element, $predicate and $attr to $previous to make a new $query xpath
   if ($element) { $query = $previous.'/'.$ns.':'.$element; }
   if ($predicate) { $query .= "[$predicate]"; }
   if ($attr) { $query .= "[@$attr]"; }
@@ -625,11 +615,6 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
     $text = trim($data," \t\n\r\0\x0B\"");
   }
 
-  /* Debugging...
-  $debug = $doc->saveXML();   // for debugging only!
-  drupal_set_message("_generateNodeFromXPath element, attribute, text are: '$element', '$attribute->name', '$text'.", 'info');
-  drupal_set_message("...................... target is: '$query'.", 'info'); */
-
   // Search for an existing $query node and make it the $parent.
   // If none exist, create a new node.
   // If $query is $docRoot select the document root as the $parent.
@@ -640,12 +625,12 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
     $dx = new DOMXPath($doc);
     $dx->registerNamespace($ns, $nsU);
     $nodes = $dx->query($query);
-    $len = $nodes->length;
 
     // If $query[$predicate] is found, set $parent to the $predicate node and move on.
     // If $query not found, append new child to $parent and make it the $parent.
     // If multiple $data values exist...make a node from the first, then copy it.
-    if ($len > 0) {
+
+    if ($nodes && ($nodes->length > 0)) {
       $parent = $nodes->item(0);
     } else if (!is_array($text)) {
       $parent = _make_node($doc, $parent, $element, $attributes, $text);
@@ -806,18 +791,24 @@ function _make_derivatives($object) {
 function _make_node($doc, $parent, $element, $attributes, $value=NULL) {
   static $ns = 'mods';
   static $nsU = 'http://www.loc.gov/mods/v3';
-  // if (empty($value) && empty($attribute)) { return $parent; }  // no $value or $attribute, return the $parent
+
+  // Create our target element ($node) with the $ns namespace.
 
   try {
-    $node = $doc->createElementNS($nsU, $element);   // create a new $node with name $element
+    $node = $doc->createElementNS($nsU, $element);   // create new $node named $element
   } catch (Exception $e) {
     echo "Caught createElement exception in _make_node: ".$e->getMessage()."\n";
     echo "Element name is '".$element."' and value is '".$value."'\n";
     exit("Unrecoverable exception encountered in _make_node.createElement( ).");
   }
 
+  // If this element has text/data ($value), parse it for possible [@attribute=something]
+  // and attach the text to the element.
+
   if ($value) {
-    if (!$text = $doc->createTextNode($value)) {   // save $value as new $text node
+    list($data, $attr) = explode("[@", $value);
+    if ($attr) { $attributes .= _parseAttributes($attr, FALSE); }  // append data attributes to header $attributes
+    if (!$text = $doc->createTextNode(trim($data))) {   // save $data as new $text node
       drupal_set_message("createTextNode($value) returned FALSE.  Check your data!", 'error');
       return FALSE;
     }
@@ -829,6 +820,9 @@ function _make_node($doc, $parent, $element, $attributes, $value=NULL) {
       return FALSE;
     }
   }
+
+  // If any $attributes are defined, append them to our $node.
+  // @TODO...probably should check to make sure no attribute is defined more than once!
 
   if ($attributes) {
     foreach ($attributes as $attribute) {
@@ -927,11 +921,11 @@ function _has_index($txt) {
  * @return array - Attribute name->value pairs.
  */
 function _parseAttributes($attr, $header=TRUE) {
-  $attrubutes = array();
+  $attributes = array();
   $attrs = explode(' and ', $attr);
 
   foreach ($attrs as $a) {
-    $pair = trim($a, '@');
+    $pair = trim($a, "@]");
     if ($header && !strpos($pair,'=')) {
       $name = $pair;
       $val = NULL;

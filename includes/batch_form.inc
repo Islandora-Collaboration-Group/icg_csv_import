@@ -4,8 +4,8 @@
  * The following command-line bits might be useful in your terminal...
  *
  * cd /var/www/drupal/sites/default/
- * drush vset icg_csv_import_csv_file_uri '/vagrant/shared/DGImportTemplate - DGImportTemplate.tsv'
- * drush vset icg_csv_import_constants_file_uri '/vagrant/shared/DGImportTemplate - DGConstantsTemplate.tsv'
+ * drush vset icg_csv_import_csv_file_uri '/vagrant/shared/DGDataTemplate.tsv'
+ * drush vset icg_csv_import_constants_file_uri '/vagrant/shared/DGConstantsTemplate.tsv'
  * drush vset icg_csv_import_parent_pid 'islandora:sp_large_image_collection'
  * drush vset icg_csv_import_username 'ICG'
  * drush vset icg_csv_import_password 'anything'
