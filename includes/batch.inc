@@ -792,6 +792,8 @@ function _make_node($doc, $parent, $element, $attributes, $value=NULL) {
   static $ns = 'mods';
   static $nsU = 'http://www.loc.gov/mods/v3';
 
+  $localAttr = $attributes;
+
   // Create our target element ($node) with the $ns namespace.
 
   try {
@@ -807,7 +809,23 @@ function _make_node($doc, $parent, $element, $attributes, $value=NULL) {
 
   if ($value) {
     list($data, $attr) = explode("[@", $value);
-    if ($attr) { $attributes .= _parseAttributes($attr, FALSE); }  // append data attributes to header $attributes
+    if ($attr) {
+      $pairs = _parseAttributes($attr, FALSE);    // append data attributes to header $attributes
+      foreach ($pairs as $name => $val) {
+        try {
+          if (!$localAttr[$name] = $doc->createAttribute($name)) {
+            $msg = "createAttribute($name) in data '$value' returned FALSE.  Check your Xpath!";
+            throw new Exception($msg);
+          }
+          $localAttr[$name]->value = $val;
+        } catch (Exception $e) { // catch all exceptions
+          drupal_set_message("Attribute error in '$name' while parsing data '$value'. Message: "
+            . $e->getMessage(), 'error');
+          return;
+        }
+      }
+    }
+
     if (!$text = $doc->createTextNode(trim($data))) {   // save $data as new $text node
       drupal_set_message("createTextNode($value) returned FALSE.  Check your data!", 'error');
       return FALSE;
@@ -821,11 +839,11 @@ function _make_node($doc, $parent, $element, $attributes, $value=NULL) {
     }
   }
 
-  // If any $attributes are defined, append them to our $node.
+  // If any $localAttr attributes are defined, append them to our $node.
   // @TODO...probably should check to make sure no attribute is defined more than once!
 
-  if ($attributes) {
-    foreach ($attributes as $attribute) {
+  if ($localAttr) {
+    foreach ($localAttr as $attribute) {
       try {
         $node->appendChild($attribute);   // attach the $attribute to the new $node
       } catch (Exception $e) { // catch all exceptions
