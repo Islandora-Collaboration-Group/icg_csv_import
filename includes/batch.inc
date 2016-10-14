@@ -1,6 +1,6 @@
 <?php
 
-/* 
+/*
  * Cells with NO data (empty cells) are generally NOT processed.  However, this fouls
  * up things in the case of enumerated xpaths since they MUST be processed in proper
  * numeric order!
@@ -340,6 +340,8 @@ function icg_csv_import_batch_item($head, $row, $controls) {
       $obj2 = $data;
     } else if ($header === "CMODEL") {
       $cmodel = $data;
+    } else if ($header === "MIME") {
+      $mime = $data;
     } else {
       if ($header === $labelXPath) { $label = $data; }
 
@@ -400,7 +402,7 @@ function icg_csv_import_batch_item($head, $row, $controls) {
   // Create an $object, or $update an $existing object, with $mods as it's MODS datastream
   // and return the object's $pid.
 
-  if ($pid = _icg_make_new_object($existing, $parent_pid, $namespace, $cmodel, $label, $mods, $obj, $credentials, $inactive)) {
+  if ($pid = _icg_make_new_object($existing, $parent_pid, $namespace, $cmodel, $label, $mods, $mime, $obj, $credentials, $inactive)) {
     if ($update) {
       $record[0] = "# ".$pid;
     } else {
@@ -692,9 +694,9 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
  * @param $parent_pid - The PID of the new object's parent.  Presumably this is a collection object.
  * @param $ns - The namespace (no trailing colon) of the new object.
  * @param string $cmodel - The content model to be associated with the new object.
- * @param string $label - The label (title?) to be applied to the Fedora object.
+ * @param string $label - The label (title) to be applied to the Fedora object.
  * @param string $mods - The MODS record content as a string.
- * @param string $transform - Path to the MODS-to-DC transform xslt.
+ * @param string $mime - The specified MIME type of the object.
  * @param string $obj - The name of the file holding the OBJ datastream content.
  * @param array $credentials
  *   'username' => The username to use for successful file transfer.
@@ -703,7 +705,7 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
  *
  * @return mixed - The PID of the new object, or FALSE if the process failed.
  */
-function _icg_make_new_object($existing, $parent_pid, $ns, $cmodel, $label, $mods, $transform, $obj=NULL, $credentials=NULL, $inactive=FALSE) {
+function _icg_make_new_object($existing, $parent_pid, $ns, $cmodel, $label, $mods, $mime='image/jpeg', $obj=NULL, $credentials=NULL, $inactive=FALSE) {
   $module_name = basename(__FILE__, '.module');
 
   $content_model = (!$cmodel ? 'islandora:compoundCModel' : $cmodel);
@@ -743,13 +745,13 @@ function _icg_make_new_object($existing, $parent_pid, $ns, $cmodel, $label, $mod
   }
 
   // If $obj is specified, fetch the file contents and make a new OBJ datastream for
-  // $object from it.  @TODO...MIME type assumes image/jpeg!
+  // $object from it.
   if ($obj) {
     if ($temp = _fetch_OBJ($obj, $credentials)) {
       $dsid = 'OBJ';
       $datastream = $object->constructDatastream($dsid, 'M');
       $datastream->label = 'Object Content';
-      $datastream->mimeType = 'image/jpeg';
+      $datastream->mimeType = $mime;
       $datastream->setContentFromFile($temp, TRUE);
       $object->ingestDatastream($datastream);
     }
@@ -758,6 +760,14 @@ function _icg_make_new_object($existing, $parent_pid, $ns, $cmodel, $label, $mod
   // Ingest the new object into Fedora.
   $pid = $object->id;
   if (!$existing) { islandora_add_object($object); }
+
+  // If the $label was blank, issue a warning.
+  if (strlen($label) < 1) {
+    $term = (!$existing ? 'created' : 'updated');
+    drupal_set_message("Object '$pid' was $term with NO label.", 'warning');
+    $msg = "You may need to introduce a LABEL column in your CSV data, or define the icg_csv_import_label_xpath variable prior to import.";
+    drupal_set_message($msg, 'status', FALSE);
+  }
 
   // Do some derivative work if needed.
   if ($obj && $temp) { islandora_run_derivatives($object, 'OBJ'); }
