@@ -231,6 +231,7 @@ If the attribute you are putting in the column header is not an attribute of the
 Smith, John                          |
 
 Element attributes introduced in the data (values) follow the same rules as attributes that appear in the XPath column headings.
+
 * An element may have multiple attributes if they are seperated by 'and' operators.  For example: 
 
 /mods/name[@type='personal']/namePart[@note='given']|
@@ -321,25 +322,49 @@ Your *hook_fetch_OBJ* function will only be called if all three of the following
  
 The module will concatenate the OBJ_PREFIX and OBJ key fields together, with NO additional separator, and pass the concatenated result to your *hook_fetch_OBJ* function.
 
-### Default Values
-
-CSV Import may be driven by 'default' values in some circumstances and another Drupal 'hook' function named *hook_fetch_CSV_defaults*.  This function is documented in the module's module's *icg_csv_import.api.php* file.  The function returns a PHP array named $values, and currently supports the definition of the following defaults:
-
- * label_field => Specifies the MODS field used to define an object's LABEL.  Usually /mods/titleInfo/title.
- * transform => Specifies the full path of the MODS-to-DC transform to run on each object MODS record.
-
 ### Import Post-Processing
 
-Once an object has been successfully created, or updated, from a single line of CSV data, the module will perform the following sequence of post-processing actions upon that object:
+Once an object has been successfully created, or updated, from a single line of CSV data, the module will perform the usual sequence of post-ingest actions: 
 
-1. If a valid $values\['transform'\] (see the *Default Values* section above) XSLT transform file was specified, the module will invoke the transform to generate a new DC datastream from the object's MODS datastream.
-2. The module will regenerate all derivative datastreams as specified by the object's content model (CMODEL).
+1. The _islandora_add_object_ function is invoked.  At a miniumu, this will generate a new, or updated, DC daastream from the object's MODS datastream.
+2. The module will regenerate all derivative datastreams as specified by the object's content model (CMODEL) with a call to the _islandora_run_derivatives_ function.
 3. The module invokes any *hook_create_object_post_ops* defined by the user.  See *icg_csv_import.api.php* for details.
  
 
 ### Launching a CSV Import
 
-Once the module is installed, a user with administration rights can launch it by navigating to the target collection where you would like to import new, or update existing objects.  Click the *Manage* tab like the one shown in our *Geology Collection* example below.  
+CSV import processing is driven by a set of nine (9) Drupal variables.  The variables and their default values are:
+
+Variable Name | Required? | Default Value |
+--------------|-----------|---------------|
+icg_csv_import_parent_pid | **Yes** | _**None**_ 
+icg_csv_import_csv_file_uri | **Yes** | _**None**_
+icg_csv_import_constants_file_uri | No | _None_
+icg_csv_import_username | No | _None_
+icg_csv_import_password | No | _None_
+icg_csv_import_namespace | **Yes** | islandora
+icg_csv_import_delimiter | **Yes** | tab
+icg_csv_import_inactive | **Yes** | TRUE
+icg_csv_import_label_xpath | **Yes** | /mods/titleInfo/title
+
+Note that there are two "Required" variables that have NO default.  You must provide values for these variables!
+
+A simple sequence of Drush commands, like the following, can be used to define necessary variables **before** launching an import. 
+
+Sample Commands |
+----------------|
+cd /var/www/drupal/sites/default |
+drush vset icg_csv_import_csv_file_uri '/vagrant/shared/AttributeTest01 - Data.tsv' |
+drush vset icg_csv_import_constants_file_uri '/vagrant/shared/AttributeTest01 - Constants.tsv' |
+drush vset icg_csv_import_parent_pid 'islandora:sp_large_image_collection' |
+drush vset icg_csv_import_username 'ICG' |
+drush vset icg_csv_import_password 'anything' | 
+drush vset icg_csv_import_namespace 'islandora' |
+drush vset icg_csv_import_delimiter 'tab' |
+drush vset icg_csv_import_inactive TRUE |
+drush vset icg_csv_import_label_xpath '/mods/titleInfo/title' |
+
+Once the module is installed and the command variables have been defined, with administration rights and a suitably structured CSV file you can launch an import by navigating to the target collection that will contain the imported, or updated, objects, and click the *Manage* tab like the one shown in our *Geology Collection* example below.  
  
 ![Sample Collection Screen](documentation/images/Fossils-10.png?raw=true)
  
@@ -349,9 +374,17 @@ A *Manage* screen similar to the one shown below should open. The path to this s
 
 In the *Manage* screen you should find a *CSV Import* tab or button.  Click that tab, or button, to begin the import process by opening the CSV Import user interface. 
 
-### CSV Import User Interface
+### CSV Import Review Form 
 
-The CSV Import user interface consists of two, or in some cases three, input data forms or pages.
+When invoked, the CSV Import module should present you with a simple 'review' form like the one shown below.
+
+![CSV Import UI Screen 1](documentation/images/ReviewForm.png?raw=true) 
+
+Select 'Submit' to accept the input variable values and proceed, or select 'Cancel' to return to the previous page.
+
+### OLD CSV IMPORT UI _<This section should be moved to the UI project.>_
+
+The user interface consists of two, or in some cases three, input data forms or pages.
 
 The first form/page prompts the user for a number of required and optional parameters.  Becuase the input form is rather large, the example below is presented in two parts.  The user may have to scroll to see the entire form.
 
