@@ -7,12 +7,13 @@
  */
 
 /**
- * Handle form submission. Read the CSV into a set of batch operations
- * and fire them off.
+ * Read the CSV into a set of batch operations and fire them off.
  *
- * Lifted from https://github.com/GiantRobot/icg_csv_import/blob/7.x-1.x/icg_csv_import.module
+ * Orignially lifted from
+ * https://github.com/GiantRobot/icg_csv_import/blob/7.x-1.x/icg_csv_import.module
+ *
  */
-function icg_csv_import_build_batch($form_state) {
+function icg_csv_import_build_batch( ) {
   $module_name = basename(__FILE__, '.module');
   static $update;
 
@@ -22,28 +23,58 @@ function icg_csv_import_build_batch($form_state) {
     'init_message' => t('Commencing'),
     'progress_message' => t('Processed @current out of @total.'),
     'error_message' => t('An error occurred during processing'),
-    'finished' => 'icg_csv_import_import_finished',
-  ) ;
+    'finished' => 'icg_csv_import_import_finish ed',
+  );
 
-  $csv_filename = $form_state['all_values']['csv_file']->uri;
-  $delimiter = ($form_state['all_values']['csv_delimiter'] ? $form_state['all_values']['csv_delimiter'] : "\t");
+  if (($csv_filename = variable_get('icg_csv_import_csv_file_uri', 'Undefined!')) === 'Undefined!') {
+    drupal_set_message("icg_csv_import_csv_file_uri must specify a valid CSV import file path!  This process is aborted!", 'error');
+    return;
+  }
 
+  $delimiter = variable_get('icg_csv_import_delimiter', 'tab');
+  $delimiter = (($delimiter === 'tab') ? "\t" : $delimiter);
+
+  if (($parent_pid = variable_get('icg_csv_import_parent_pid', 'None')) === 'None') {
+    drupal_set_message("icg_csv_import_csv_parent_pid must specify a valid parent collection PID!  This process is aborted!", 'error');
+    return;
+  }
+
+  // OK, open the CSV file and Go!
   if ($handle = fopen($csv_filename, 'r')) {
-    if ($form_state['all_values']['skip_field_mapping']) {
-      $headers = fgetcsv($handle, 0, $delimiter);   // first line is $headers
-    } else {
-      $headers = $form_state['all_values']['crosswalk'];  // get $headers from the crosswalk
-    }
+    $headers = fgetcsv($handle, 0, $delimiter);   // first line is $headers
 
     $format = 'Y-m-d H:i:s';
     $marker = date($format);
 
+    $cData = array( );
+
     // If $constants are defined, append their keys to $headers.
-    $constants = (isset($form_state['all_values']['constants']) ? $form_state['all_values']['constants'] : FALSE);
+    $constants = variable_get('icg_csv_import_constants_file_uri', 'None');
+    $constants = (($constants === 'None') ? FALSE : $constants);
     if (!empty($constants)) {
-      foreach ($constants as $key => $value) {
-        $headers[] = $key;
+      if ($file_handle = fopen($constants, 'r')) {
+        $cHeaders = fgetcsv($file_handle, 0, $delimiter);  // Read first line to get xpath/header info
+        $cData = fgetcsv($file_handle, 0, $delimiter);     // Read the next line to get $cData
+        for ($i = 0; $i < count($cHeaders); $i++) {
+          $headers[] = $cHeaders[$i];
+        }
+        fclose($file_handle);  // Close the constants file connection
       }
+    }
+
+    // Check the $headers for errors.
+    $result = icg_csv_import_header_errors($headers);
+    if (!$result) {
+      drupal_set_message("An error was detected by icg_csv_import_header_errors and the import was aborted.", 'error');
+      return FALSE;
+    } else if (is_array($result)) {
+      foreach ($result as $cell => $message) {
+        drupal_set_message("An Xpath error was detected in '$cell'.  Message: $message", 'error');
+
+      }
+      return FALSE;
+    } else {
+      $mods_skeleton = $result;  // $mods_skeleton is a valid MODS XML string.
     }
 
     // Parse the $csv_filename into constituent parts.
@@ -61,13 +92,13 @@ function icg_csv_import_build_batch($form_state) {
       watchdog($module_name, "Could not open CSV history file '%history'.", array('%history' => $history), WATCHDOG_ERROR);
       return FALSE;
     }
-    // debug("Successfully opened file '$history' to capture CSV import status.");
 
     $record = $headers;
 
     // Determine if a date/time marker is already present in the first $headers cell.  If yes,
     // this process will update the first column, otherwise it will append a new column of data
     // to the history.
+
     if ($previous = strtotime($record[0])) {
       $update = TRUE;
       $record[0] = $marker;
@@ -80,21 +111,17 @@ function icg_csv_import_build_batch($form_state) {
     fputcsv($fp, $record, $delimiter);
     fclose($fp);
 
-    // Get the parent_pid parameter and save it.  @TODO...remove, no longer needed
-    // $parent_pid = $form_state['build_info']['args'][0]->id;
-    // $form_state['all_values']['parent_pid'] = $parent_pid;
-
     // First batch operation...save key parameters
-    $form_state['all_values']['history'] = $history;
-    $form_state['all_values']['update'] = $update;
-    $batch['operations'][] = array('icg_csv_import_remember', array($csv_filename, $form_state['all_values'], $headers));
+    $controls['history'] = $history;
+    $controls['update'] = $update;
+    $batch['operations'][] = array('icg_csv_import_remember', array($csv_filename, $controls, $headers));
 
     // Read and process the CSV file one line at a time
     while ($line = fgetcsv($handle, 0, $delimiter)) {
-      // If $constants is defined, append the $values of $constants to $line
+      // If $constants is defined, append the $cData values to $line
       $full_line = $line;
-      if (!empty($constants)) {
-        foreach ($constants as $key => $value) {
+      if (!empty($cData)) {
+        foreach ($cData as $value) {
           $full_line[] = $value;
         }
       }
@@ -106,7 +133,7 @@ function icg_csv_import_build_batch($form_state) {
   }
 
   // Return path
-  $path = '/islandora/object/'.$form_state['all_values']['parent_pid'];
+  $path = '/islandora/object/'.$parent_pid;
 
   // Set for batch processing...and Go!
   batch_set($batch);
@@ -203,19 +230,11 @@ function icg_csv_import_import_line($line, &$context) {
  *
  * @param array() $head - XPaths of destination fields
  * @param array() $row - One CSV row of corresponding data to deliver to destination fields
- * @param array() $controls - Process controls passed from the user interface. Elements mostly
- *   from $form_state['all_values'] include:
+ * @param array() $controls - Process controls passed from above.
  *
- *   parent_pid - The PID of the parent collection
- *   namespace - The namespace (no colon) to ingest new objects into
- *   inactive - Indicates if the ingested objects are to be Active or Inactive
  *   history - Name of the temporary file holding processed import history
  *   update - Indicates if this process is updating a previous import (has history) or if objects
  *     are all new
- *   constants - Associative array of constants, xpath => value pairs to be added to each row of
- *     the CSV and corresponding new object
- *   transform  @TODO - The path to the defined XSLT transform to be applied to new MODS records
- *   labelXPath  @TODO - The XPath to the data to be used as new object labels
  *
  * @return string|bool - The PID of the ingested object, or FALSE in case of an error
  */
@@ -225,17 +244,17 @@ function icg_csv_import_batch_item($head, $row, $controls) {
   static $ns = 'mods';
   static $nsU = 'http://www.loc.gov/mods/v3';
 
-  $parent_pid = $controls['parent_pid'];
-  $namespace = $controls['namespace'];
-  $inactive = $controls['ingest_as_inactive'];
+  $parent_pid = variable_get('icg_csv_import_parent_pid');
+  $namespace = variable_get('icg_csv_import_namespace', 'islandora');
+  $inactive = variable_get('icg_csv_import_inactive', TRUE);
+  $constants = variable_get('icg_csv_import_constants_file_uri', '');
+  $delimiter = (variable_get('icg_csv_import_delimiter', 'tab') === 'tab' ? "\t" : variable_get('icg_csv_import_delimiter'));
+  $labelXPath = variable_get('icg_csv_import_label_xpath', '/mods/titleInfo/title');
+  $credentials['username'] = variable_get('icg_csv_import_username', '');
+  $credentials['password'] = variable_get('icg_csv_import_password', '');
+
   $history = $controls['history'];
   $update = $controls['update'];
-  $transform = $controls['transform'];
-  $constants = $controls['constants'];
-  $labelXPath = $controls['label_field'];
-  $credentials['username'] = $controls['credentials_username'];
-  $credentials['password'] = $controls['credentials_password'];
-  $delimiter = ($controls['csv_delimiter'] ? $controls['csv_delimiter'] : "\t");
 
   $format = 'Y-m-d H:i:s';
   $marker = date($format);
@@ -247,30 +266,46 @@ function icg_csv_import_batch_item($head, $row, $controls) {
   // Check for a hashtag (comment) marker at the start of $row.  If found then echo
   // $row into the history file but do NOTHING else.
   if (_startsWith($record[0],'#')) {
-    $fp = fopen($history,'a');    // open the history CSV file to append data
-    fputcsv($fp, $record, $delimiter);            // append $record as-is to the history
+    $fp = fopen($history,'a');            // open the history CSV file to append data
+    fputcsv($fp, $record, $delimiter);    // append $record as-is to the history
     fclose($fp);
     return TRUE;
   }
-  
-  // Invoke all hook_validate_csv functions.  Pass the array of $headers (xpaths) and
-  // $record (one row of CSV data). The hook function should return FALSE if there
+
+  // Invoke all hook_validate_csv_data functions.
+  // Pass the array of $headers (xpaths) and $record (data).  The hook function should return FALSE if there
   // are no problems; otherwise it should return an associative array of
   // content -> message pairs indicating the source of the problem (content) and
   // a message explaining what's wrong.
-  $problems = module_invoke_all('validate_csv', $headers, $record);
-  if ($problems) {
-    // @TODO...Stop the process, or report the issues an move on?
+  //
+  // ANYTHING wrong here will cause this line of data to be skipped!
+
+  $skip = FALSE;
+  $problems = module_invoke_all('validate_csv_data', $headers, $record);
+  foreach ($problems as $problem => $message) {
+    if ($problem) {
+      drupal_set_message("CSV data error encountered in '$problem'.  Description: $message ", 'warning');
+      $skip = TRUE;
+    }
+  }
+
+  // Echo the data into the history file and return FALSE to skip this data.
+  if ($skip) {
+    $fp = fopen($history,'a');            // open the history CSV file to append data
+    fputcsv($fp, $record, $delimiter);    // append $record as-is to the history
+    fclose($fp);
+    return FALSE;
   }
 
   // Build a simple MODS DOMDocument to hold the data.
   $doc = new DOMDocument('1.0');
   $doc->preserveWhiteSpace = false;
   $doc->formatOutput = true;
-
-  $xmlns = $doc->createAttribute('xmlns');
-  $xmlns->value = $nsU;
-  $root = _make_node($doc, $doc, $ns, $xmlns, NULL);
+  $mods = $doc->createElementNS($nsU, $ns);
+  $mods->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:xlink', 'http://www.w3.org/1999/xlink');
+  $mods->setAttributeNS('http://www.w3.org/2000/xmlns/', "xmlns:$ns", $nsU);
+  $mods->setAttributeNS('http://www.w3.org/2000/xmlns/', "xmlns:xsi", 'http://www.w3.org/2001/XMLSchema-instance');
+  $doc->appendChild($mods);
 
   $length = min(count($headers), count($row));
   $obj = $cmodel = $label = NULL;
@@ -312,8 +347,8 @@ function icg_csv_import_batch_item($head, $row, $controls) {
       if (!strstr($data,'|')) {
         $parent = _generateNodeFromXPath($doc, $parent, $header, $data);
       } else {
-        $parts = explode('|', $data);
-        $parent = _generateNodeFromXPath($doc, $parent, $header, $parts);
+        $data_parts = explode('|', $data);
+        $parent = _generateNodeFromXPath($doc, $parent, $header, $data_parts);
       }
     }
   }
@@ -323,7 +358,7 @@ function icg_csv_import_batch_item($head, $row, $controls) {
   if (!empty($obj1)) { $obj = $obj1; }
   if (!empty($obj2)) { $obj .= $obj2; }
 
-
+  // Save the completed $doc XML as $mods.
   $mods = $doc->saveXML();
 
   /* Save $doc as a temporary file for debugging purposes.
@@ -336,6 +371,7 @@ function icg_csv_import_batch_item($head, $row, $controls) {
 
   // If we are in $update mode and this record already has a valid PID...purge the existing
   // object's MODS record and force the creation of a new MODS on the same PID ($usePID).
+
   $pattern = "/^".$namespace.":\d+$/";
   $existing = $update;
 
@@ -363,7 +399,8 @@ function icg_csv_import_batch_item($head, $row, $controls) {
 
   // Create an $object, or $update an $existing object, with $mods as it's MODS datastream
   // and return the object's $pid.
-  if ($pid = _icg_make_new_object($existing, $parent_pid, $namespace, $cmodel, $label, $mods, $transform, $obj, $credentials, $inactive)) {
+
+  if ($pid = _icg_make_new_object($existing, $parent_pid, $namespace, $cmodel, $label, $mods, $obj, $credentials, $inactive)) {
     if ($update) {
       $record[0] = "# ".$pid;
     } else {
@@ -385,6 +422,103 @@ function icg_csv_import_batch_item($head, $row, $controls) {
 
   return $pid;
 }
+
+
+/**
+ * icg_csv_import_header_errors - This is derived from icg_csv_import_batch_item as
+ *   a function to validate Xpaths (CSV and constants header row) before the
+ *   batch process is started.
+ *
+ * @param array() $head - XPaths from the structured CSV header row.
+ *
+ * @return string|bool|array - An associative array of $head => message errors, FALSE
+ * if the function failed to build a MODS skeleton, or a valid MODS skeleton string.
+ */
+function icg_csv_import_header_errors($head) {
+  $module_name = basename(__FILE__, '.module');
+  static $ns = 'mods';
+  static $nsU = 'http://www.loc.gov/mods/v3';
+  $return = FALSE;
+
+  // Is $head[0] a timestamp?
+  $update = strtotime($head[0]);
+
+  // Fetch the remaining controls.
+  $labelXPath = variable_get('icg_csv_import_label_xpath', '/mods/titleInfo/title');
+
+  $headers = $head;
+
+  // Invoke all hook_validate_csv_header functions.
+  // Pass the array of $headers (xpaths).  The hook function should return FALSE if there
+  // are no problems; otherwise it should return an associative array of
+  // content -> message pairs indicating the source of the problem (content) and
+  // a message explaining what's wrong.
+  //
+  // ANYTHING wrong here should halt the process!
+
+  $halt = FALSE;
+  $problems = module_invoke_all('validate_csv_header', $headers);
+  foreach ($problems as $problem => $message) {
+    if ($problem) {
+      drupal_set_message("CSV header error encountered in '$problem'.  Description: $message ", 'error', FALSE);
+      $halt = TRUE;
+    }
+  }
+
+  if ($halt) {
+    $msg = "Critical CSV header error encountered!  Aborting this process.";
+    drupal_set_message($msg, 'error', FALSE);
+    return FALSE;
+  }
+
+  // Build a simple MODS DOMDocument to test the Xpath structures.
+  $doc = new DOMDocument('1.0');
+  $doc->preserveWhiteSpace = false;
+  $doc->formatOutput = true;
+
+  $xmlns = $doc->createAttribute('xmlns');
+  $xmlns->value = $nsU;
+  $root = _make_node($doc, $doc, $ns, $xmlns, NULL);
+
+  $length = count($headers);
+  $cmodel = $label = NULL;
+
+  // Primary loop...where the rubber meets the road.
+  //
+  // Loop $i through $headers adding empty data elements to $doc along the way.
+  // Skip all empty or comment $headers cells.
+  // Look for the optional "special" $headers 'LABEL, 'OBJ_PREFIX', 'OBJ' and 'CMODEL' which mark the
+  // columns that contain the object label, OBJ content filepath, and content model, respectively.
+
+  // In case of an $update, shift the $first column one to the right.
+  $first = ($update ? 1 : 0);
+
+  for ($i=$first, $parent=NULL; $i<$length; $i++) {
+    $header = trim($headers[$i]);
+    if (empty($header) || _startsWith($header, '#')) { continue; }   // $headers[$i] is blank or a comment...skip this column
+
+    if ($header === "LABEL") {
+      $label = TRUE;
+    } else if ($header === "OBJ_PREFIX") {
+      $obj1 = TRUE;
+    } else if ($header === "OBJ") {
+      $obj2 = TRUE;
+    } else if ($header === "CMODEL") {
+      $cmodel = TRUE;
+    } else if ($header === $labelXPath) {
+      $label = TRUE;
+    }
+
+    $parent = _generateNodeFromXPath($doc, $parent, $header, NULL);
+  }
+
+  if ($mods = $doc->saveXML()) {
+    return $mods;
+  } else {
+    return FALSE;
+  }
+}
+
 
 // ------------------------ Private functions ----------------------------
 
@@ -429,68 +563,76 @@ function _fetch_OBJ($path, $credentials) {
  * @param string $previous
  */
 function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' ) {
+  static $docRoot = '/mods:mods';
   static $ns = 'mods';
   static $nsU = 'http://www.loc.gov/mods/v3';
 
+  $attributes = array( );
+
   // If no parent is provided, assume that we begin from the document root
   $root = $doc->documentElement;
-  if (!$parent) { $parent = $root; };
+  $parent = (!$parent ? $root : $parent );
 
   // Trim the $xpath and grab the next element name in the $xpath
   $trimmed = trim($xpath, '/');
   $parts = _multiexplode(array('/','[',']'), $trimmed);
-  // $parts = _multiexplode(array('/','['), $trimmed);
 
   // Pop the $element off of the $parts array
   $element = array_shift($parts);
-  // dpr("element:$element\n");
 
-  $index = $attr = $attributes = FALSE;
+  $predicate = $attr = FALSE;
 
-  // Look ahead for a node $index in $parts.  If none is present assume $index = 1.
+  // Look ahead for a node $predicate in $parts.  If none is present assume $predicate = 1.
   if (isset($parts[0]) && _is_unsigned_integer($parts[0])) {    // element has an index
-    $index = array_shift($parts);
+    $predicate = array_shift($parts);
   } else {
-    $index = 1;
+    $predicate = 1;
   }
 
   // Look ahead for an $attribute in $parts
   if (isset($parts[0]) && _startsWith($parts[0], '@')) {   // element has an attribute
     $attr = trim($parts[0],"@] ");
-    // list($attr, $val) = explode('=', $parts[0], 2);
-    // $value = trim($val,"'");
-    // dpr("attribute:$attr=$value\n");
     array_shift($parts);
   }
 
   // If there are one or more $attributes, build their XML.
-  $attributes = array( );
   if ($attr) {
     $attrArray = _parseAttributes($attr);
+    $attrXpath = FALSE;
+
     foreach ($attrArray as $name => $value) {
+      // Found attribute with no value while processing data... skip this attribute.
+      if ($data && empty($value)) { continue; }
+
       try {
         if (!$attributes[$name] = $doc->createAttribute($name)) {
-          $msg = "createAttribute($name) returned FALSE.  Check your Xpath!";
+          $msg = "createAttribute($name) in '$xpath' returned FALSE.  Check your Xpath!";
           throw new Exception($msg);
         }
         $attributes[$name]->value = $value;
-        if (empty($attributes[$name]->value)) {
-          $msg = "The value of attribute '$name=$value' is not valid.  Check your XPath!";
-          throw new Exception($msg);
+
+        // Note that attributes in the header ($data=NULL) should be represented by [@name]
+        // with NO value.
+
+        if ($attrXpath) {
+          $attrXpath .= " and @$name";
+        } else {
+          $attrXpath = "@$name";
         }
+        if ($data && !empty($value)) { $attrXpath .= "='$value'"; }
+
       } catch (Exception $e) { // catch all exceptions
-        drupal_set_message("Attribute error in '$name'. Message: " . $e->getMessage(), 'error');
+        drupal_set_message("Attribute error in '$name' while parsing '$xpath'. Message: "
+          . $e->getMessage(), 'error');
         return;
       }
     }
   }
 
-  // Append $element to $previous to make a new $current xpath
-  if ($element) { $current = $previous.'/'.$element."[$index]"; }
-  if ($attr) { $current .= "[@$attr]"; }
-
-  // $current .= "[$attr='$value']"; }
-  // dpr("current:$current\n");
+  // Append $element, $predicate and $attr to $previous to make a new $query xpath
+  if ($element) { $query = $previous.'/'.$ns.':'.$element; }
+  if ($predicate) { $query .= "[$predicate]"; }
+  if ($attr) { $query .= "[$attrXpath]"; }
 
   // If this is not the end of the $xpath, don't set $data!
   if (isset($parts[0])) {
@@ -501,37 +643,41 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
     $text = trim($data," \t\n\r\0\x0B\"");
   }
 
-  /* Debugging...
-  $debug = $doc->saveXML();   // for debugging only!
-  drupal_set_message("_generateNodeFromXPath element, attribute, text are: '$element', '$attribute->name', '$text'.", 'info');
-  drupal_set_message("...................... target is: '$current'.", 'info'); */
+  // Search for an existing $query node and make it the $parent.
+  // If none exist, create a new node.
+  // If $query is $docRoot select the document root as the $parent.
 
-  // Search for an existing $current node and make it the $parent.  If none exist, create a new node.
-  $dx = new DOMXPath($doc);
-  $dx->registerNamespace($ns, $nsU);
-  $nodes = $dx->query($current);
-  if ($nodes->length > 0) {     // $current[$index] was found, set $parent to the $index node and move on.
-    $parent = $nodes->item(0);  // $index - 1);
-    // drupal_set_message("...................... found parent '$parent->nodeName'.", 'info');
-  } else {    // $current not found, append a new child node to $parent and make it the new $parent.
-    if (!is_array($text)) {
+  if ($query === $docRoot) {
+    $parent = $root;
+  } else {
+    $dx = new DOMXPath($doc);
+    $dx->registerNamespace($ns, $nsU);
+    $nodes = $dx->query($query);
+
+    // If $query[$predicate] is found, set $parent to the $predicate node and move on.
+    // If $query not found, append new child to $parent and make it the $parent.
+    // If multiple $data values exist...make a node from the first, then copy it.
+
+    if ($nodes && ($nodes->length > 0)) {
+      $parent = $nodes->item(0);
+    } else if (!is_array($text)) {
       $parent = _make_node($doc, $parent, $element, $attributes, $text);
-      // drupal_set_message("...................... created node on parent '$parent->nodeName'.", 'info');
-    } else {   // multiple $data values exist...make a node from the first, then copy that node for each remaining
+    } else {
       $original_parent = $parent;
       $parent = _make_node($doc, $parent, $element, $attributes, $text[0]);
       $n = count($text);
       for ($i=1; $i<$n; $i++) {
         _make_node($doc, $original_parent, $element, $attributes, $text[$i]);
-        // drupal_set_message("...................... created node on parent '$parent->nodeName'.", 'info');
       }
     }
   }
 
-  // If there are any $parts left, build the $remainder xpath, pass $current as the last xpath processed, and recurse.
+  // If there are any $parts left, build the $remainder xpath,
+  // pass $query as the last xpath processed, and recurse.
+
   if (isset($parts[0])) {
     $remainder = implode('/',$parts);
-    _generateNodeFromXPath($doc, $parent, $remainder, $data, $current);
+    _generateNodeFromXPath($doc, $parent, $remainder, $data, $query);
   }
 }
 
@@ -639,25 +785,25 @@ function _icg_make_new_object($existing, $parent_pid, $ns, $cmodel, $label, $mod
  * @param AbstractObject $object - The ingested object in need of derivatives.
  *
 function _make_derivatives($object) {
-  $module_name = basename(__FILE__, '.module');
-  $cmodels = $object->models;
-  foreach ($cmodels as $cmodel) {
-    switch ($cmodel) {
-      case 'islandora:sp_basic_image':
-        module_load_include('inc', 'islandora_basic_image', 'includes/derivatives');
-        islandora_basic_image_create_thumbnail($object);
-        islandora_basic_image_create_medium_size($object);
-        return TRUE;
-        break;
-      default:
-        watchdog($module_name, "Derivatives cannot be created for object '%pid' with CModel type '%cmodel'.", array(
-          '%pid' => $object->id,
-          '%cmodel' => $cmodel
-        ), WATCHDOG_WARNING);
-        return FALSE;
-        break;
-    }
-  }
+$module_name = basename(__FILE__, '.module');
+$cmodels = $object->models;
+foreach ($cmodels as $cmodel) {
+switch ($cmodel) {
+case 'islandora:sp_basic_image':
+module_load_include('inc', 'islandora_basic_image', 'includes/derivatives');
+islandora_basic_image_create_thumbnail($object);
+islandora_basic_image_create_medium_size($object);
+return TRUE;
+break;
+default:
+watchdog($module_name, "Derivatives cannot be created for object '%pid' with CModel type '%cmodel'.", array(
+'%pid' => $object->id,
+'%cmodel' => $cmodel
+), WATCHDOG_WARNING);
+return FALSE;
+break;
+}
+}
 }
 
 /**
@@ -671,18 +817,44 @@ function _make_derivatives($object) {
  * @return DOMElement - Returns the new XML element.
  */
 function _make_node($doc, $parent, $element, $attributes, $value=NULL) {
-  // if (empty($value) && empty($attribute)) { return $parent; }  // no $value or $attribute, return the $parent
+  static $ns = 'mods';
+  static $nsU = 'http://www.loc.gov/mods/v3';
+
+  $localAttr = $attributes;
+
+  // Create our target element ($node) with the $ns namespace.
 
   try {
-    $node = $doc->createElement($element);   // create a new $node with name $element
+    $node = $doc->createElementNS($nsU, $element);   // create new $node named $element
   } catch (Exception $e) {
     echo "Caught createElement exception in _make_node: ".$e->getMessage()."\n";
     echo "Element name is '".$element."' and value is '".$value."'\n";
     exit("Unrecoverable exception encountered in _make_node.createElement( ).");
   }
 
+  // If this element has text/data ($value), parse it for possible [@attribute=something]
+  // and attach the text to the element.
+
   if ($value) {
-    if (!$text = $doc->createTextNode($value)) {   // save $value as new $text node
+    list($data, $attr) = explode("[@", $value);
+    if ($attr) {
+      $pairs = _parseAttributes($attr, FALSE);    // append data attributes to header $attributes
+      foreach ($pairs as $name => $val) {
+        try {
+          if (!$localAttr[$name] = $doc->createAttribute($name)) {
+            $msg = "createAttribute($name) in data '$value' returned FALSE.  Check your Xpath!";
+            throw new Exception($msg);
+          }
+          $localAttr[$name]->value = $val;
+        } catch (Exception $e) { // catch all exceptions
+          drupal_set_message("Attribute error in '$name' while parsing data '$value'. Message: "
+            . $e->getMessage(), 'error');
+          return;
+        }
+      }
+    }
+
+    if (!$text = $doc->createTextNode(trim($data))) {   // save $data as new $text node
       drupal_set_message("createTextNode($value) returned FALSE.  Check your data!", 'error');
       return FALSE;
     }
@@ -695,8 +867,11 @@ function _make_node($doc, $parent, $element, $attributes, $value=NULL) {
     }
   }
 
-  if ($attributes) {
-    foreach ($attributes as $attribute) {
+  // If any $localAttr attributes are defined, append them to our $node.
+  // @TODO...probably should check to make sure no attribute is defined more than once!
+
+  if ($localAttr) {
+    foreach ($localAttr as $attribute) {
       try {
         $node->appendChild($attribute);   // attach the $attribute to the new $node
       } catch (Exception $e) { // catch all exceptions
@@ -783,15 +958,27 @@ function _has_index($txt) {
  * Parse a [bracketed] single or multiple attribute clause of the form
  * general form [@single='a'] or [@one='a' and @two='b' and @three='c'].
  *
+ * Note that when parsing attributes in the header it is permissible to omit
+ * the equal sign (=) and value for any/all attributes.  For example, this
+ * syntax is valid in the header:  [@one='a' and @two and @three='c'].
+ * However, attributes in the data MUST conform to the @name='value' syntax.
+ *
  * @param $attr string - A [bracketed] attribute spec.
  * @return array - Attribute name->value pairs.
  */
-function _parseAttributes($attr) {
-  $attrubutes = array();
+function _parseAttributes($attr, $header=TRUE) {
+  $attributes = array();
   $attrs = explode(' and ', $attr);
+
   foreach ($attrs as $a) {
-    $pair = trim($a, '@');
-    list($name, $val) = explode('=', $pair);
+    $pair = trim($a, "@] ");
+    if ($header && !strpos($pair,'=')) {
+      $name = $pair;
+      $val = NULL;
+    } else {
+      list($name, $val) = explode('=', $pair);
+    }
+
     $attributes[$name] = trim(trim($val,"'"),'"');
   }
   return $attributes;
