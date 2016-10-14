@@ -173,6 +173,7 @@ The complete set of Keys and their corresponding behavior in the system are docu
 * **OBJ_PREFIX** - A prefix, typically the network path to a directory containing the files named in an *OBJ* column.
 * **CMODEL** - The Islandora content model of the imported object.  Examples may include "islandora:sp\_basic\_image", "islandora:compoundCModel", etc.
 * **LABEL** - Indicates that corresponding data is to be used as the object label or title.
+* **MIME** - Indicates the MIME-type of the corresponding object.  Default is 'image/jpeg'.
 
 ##### Pipes
 
