@@ -692,7 +692,7 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
  * @param $parent_pid - The PID of the new object's parent.  Presumably this is a collection object.
  * @param $ns - The namespace (no trailing colon) of the new object.
  * @param string $cmodel - The content model to be associated with the new object.
- * @param string $label - The label (title?) to be applied to the Fedora object.
+ * @param string $label - The label (title) to be applied to the Fedora object.
  * @param string $mods - The MODS record content as a string.
  * @param string $transform - Path to the MODS-to-DC transform xslt.
  * @param string $obj - The name of the file holding the OBJ datastream content.
@@ -758,6 +758,12 @@ function _icg_make_new_object($existing, $parent_pid, $ns, $cmodel, $label, $mod
   // Ingest the new object into Fedora.
   $pid = $object->id;
   if (!$existing) { islandora_add_object($object); }
+
+  // If the $label was blank, issue a warning.
+  if (strlen($label) < 1) {
+    $term = (!$existing ? 'created' : 'updated');
+    drupal_set_message("Object '$pid' was $term with NO label.", 'warning');
+  }
 
   // Do some derivative work if needed.
   if ($obj && $temp) { islandora_run_derivatives($object, 'OBJ'); }
