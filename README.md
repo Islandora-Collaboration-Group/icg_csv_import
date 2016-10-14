@@ -80,10 +80,10 @@ The first row, highlighted in blue in the above image, contains a set of XPath s
 
 ##### XPaths
 
-In the first column, the XPath is "/mods/note[@displayLabel='Import Index']".  This Xpath statement directs the module to import the corresponding column of data into a series of MODS datastreams.  The first row of data would generated the following MODS structure:
+In the first column, the XPath is "/mods/note[@displayLabel='Import Index']".  This Xpath statement directs the module to import the corresponding column of data into a series of MODS datastreams.  The first row of data would generate the following MODS structure:
 
 	<mods>
-		<note displayLabel='Import Index>1</note>
+		<note displayLabel='Import Index'>1</note>
 	</mods> 
 	
 The second column in this example contains the Key or keyword "OBJ".  Keys are discussed in the next section of this document.
@@ -91,7 +91,7 @@ The second column in this example contains the Key or keyword "OBJ".  Keys are d
 All of the remaining columns in our example contain XPath statements in row one. These XPaths, including the aforementioned statement at the top of the first colunm, will produce a MODS datastream for the first row of data as follows:
 
 	<mods>
-		<note displayLabel='Import Index>1</note>
+		<note displayLabel='Import Index'>1</note>
 		<identifier type='local'>EM-07-01</identifier>
 		<titleInfo><title>Neuropteris hirsuta</title></titleInfo>
 		<subject>
@@ -208,7 +208,7 @@ XPaths with predicates, highlighted in blue, are illusrated in the next image.
 
 #### MODS Element Attributes
 
-You may add XML attributes to the values if those attributes are allowed in the MODS schema. Add the attribute after the falue in this way:
+You may add XML attributes to the values if those attributes are allowed in the MODS schema. Add the attribute after the value in this way:
 
 If you declare an attribute in the column header, that attribute applies to all values in the column and you don't have to declare it in each cell value.
 
@@ -229,6 +229,20 @@ If the attribute you are putting in the column header is not an attribute of the
 /mods/name[@type="personal"]/namePart|
 -------------------------------------|
 Smith, John                          |
+
+Element attributes introduced in the data (values) follow the same rules as attributes that appear in the XPath column headings.
+* An element may have multiple attributes if they are seperated by 'and' operators.  For example: 
+
+/mods/name[@type='personal']/namePart[@note='given']|
+----------------------------------------------------|
+Mark[@note='first name' **and** @displayLabel='First Name']|
+
+* Mulitple values seperated by a pipe may include element attributes.  For example: 
+
+/mods/name[@type='personal']/namePart[@note='family']|
+-----------------------------------------------------|
+Mark[@note='first name'] **and** @displayLabel='First Name'] **\|** McFate[@displayLabel='Family Name'] |
+	
 #### Constants
 
 Take note of the data in the highlighted portion of the image below. The data in these columns are 'constants'; the same value appears in every row within a particular column.   
