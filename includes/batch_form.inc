@@ -3,16 +3,16 @@
 /**
  * The following command-line bits might be useful in your terminal...
  *
- * cd /var/www/drupal/sites/default/
- * drush vset icg_csv_import_csv_file_uri '/vagrant/shared/DGDataTemplate.tsv'
- * drush vset icg_csv_import_constants_file_uri '/vagrant/shared/DGConstantsTemplate.tsv'
- * drush vset icg_csv_import_parent_pid 'islandora:sp_large_image_collection'
- * drush vset icg_csv_import_username 'ICG'
- * drush vset icg_csv_import_password 'anything'
- * drush vset icg_csv_import_namespace 'islandora'
- * drush vset icg_csv_import_delimiter 'tab'
- * drush vset icg_csv_import_inactive TRUE
- * drush vset icg_csv_import_label_xpath '/mods/titleInfo/title'
+ cd /var/www/drupal/sites/default/
+ drush vset icg_csv_import_csv_file_uri '/vagrant/shared/AttributeTest01 - Data.tsv'
+ drush vset icg_csv_import_constants_file_uri '/vagrant/shared/AttributeTest01 - Constants.tsv'
+ drush vset icg_csv_import_parent_pid 'islandora:sp_large_image_collection'
+ drush vset icg_csv_import_username 'ICG'
+ drush vset icg_csv_import_password 'anything'
+ drush vset icg_csv_import_namespace 'islandora'
+ drush vset icg_csv_import_delimiter 'tab'
+ drush vset icg_csv_import_inactive TRUE
+ drush vset icg_csv_import_label_xpath '/mods/titleInfo/title'
  *
  */
 

@@ -279,7 +279,7 @@ function icg_csv_import_batch_item($head, $row, $controls) {
     fclose($fp);
     return TRUE;
   }
-  
+
   // Invoke all hook_validate_csv functions.  Pass the array of $headers (xpaths) and
   // $record (one row of CSV data). The hook function should return FALSE if there
   // are no problems; otherwise it should return an associative array of
@@ -583,6 +583,8 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
   // If there are one or more $attributes, build their XML.
   if ($attr) {
     $attrArray = _parseAttributes($attr);
+    $attrXpath = FALSE;
+
     foreach ($attrArray as $name => $value) {
       // Found attribute with no value while processing data... skip this attribute.
       if ($data && empty($value)) { continue; }
@@ -593,6 +595,17 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
           throw new Exception($msg);
         }
         $attributes[$name]->value = $value;
+
+        // Note that attributes in the header ($data=NULL) should be represented by [@name]
+        // with NO value.
+
+        if ($attrXpath) {
+          $attrXpath .= " and @$name";
+        } else {
+          $attrXpath = "@$name";
+        }
+        if ($data && !empty($value)) { $attrXpath .= "='$value'"; }
+
       } catch (Exception $e) { // catch all exceptions
         drupal_set_message("Attribute error in '$name' while parsing '$xpath'. Message: "
           . $e->getMessage(), 'error');
@@ -604,7 +617,7 @@ function _generateNodeFromXPath($doc, $parent, $xpath, $data=NULL, $previous='' 
   // Append $element, $predicate and $attr to $previous to make a new $query xpath
   if ($element) { $query = $previous.'/'.$ns.':'.$element; }
   if ($predicate) { $query .= "[$predicate]"; }
-  if ($attr) { $query .= "[@$attr]"; }
+  if ($attr) { $query .= "[$attrXpath]"; }
 
   // If this is not the end of the $xpath, don't set $data!
   if (isset($parts[0])) {
@@ -757,25 +770,25 @@ function _icg_make_new_object($existing, $parent_pid, $ns, $cmodel, $label, $mod
  * @param AbstractObject $object - The ingested object in need of derivatives.
  *
 function _make_derivatives($object) {
-  $module_name = basename(__FILE__, '.module');
-  $cmodels = $object->models;
-  foreach ($cmodels as $cmodel) {
-    switch ($cmodel) {
-      case 'islandora:sp_basic_image':
-        module_load_include('inc', 'islandora_basic_image', 'includes/derivatives');
-        islandora_basic_image_create_thumbnail($object);
-        islandora_basic_image_create_medium_size($object);
-        return TRUE;
-        break;
-      default:
-        watchdog($module_name, "Derivatives cannot be created for object '%pid' with CModel type '%cmodel'.", array(
-          '%pid' => $object->id,
-          '%cmodel' => $cmodel
-        ), WATCHDOG_WARNING);
-        return FALSE;
-        break;
-    }
-  }
+$module_name = basename(__FILE__, '.module');
+$cmodels = $object->models;
+foreach ($cmodels as $cmodel) {
+switch ($cmodel) {
+case 'islandora:sp_basic_image':
+module_load_include('inc', 'islandora_basic_image', 'includes/derivatives');
+islandora_basic_image_create_thumbnail($object);
+islandora_basic_image_create_medium_size($object);
+return TRUE;
+break;
+default:
+watchdog($module_name, "Derivatives cannot be created for object '%pid' with CModel type '%cmodel'.", array(
+'%pid' => $object->id,
+'%cmodel' => $cmodel
+), WATCHDOG_WARNING);
+return FALSE;
+break;
+}
+}
 }
 
 /**
@@ -943,7 +956,7 @@ function _parseAttributes($attr, $header=TRUE) {
   $attrs = explode(' and ', $attr);
 
   foreach ($attrs as $a) {
-    $pair = trim($a, "@]");
+    $pair = trim($a, "@] ");
     if ($header && !strpos($pair,'=')) {
       $name = $pair;
       $val = NULL;
