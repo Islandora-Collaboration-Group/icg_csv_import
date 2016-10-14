@@ -230,19 +230,11 @@ function icg_csv_import_import_line($line, &$context) {
  *
  * @param array() $head - XPaths of destination fields
  * @param array() $row - One CSV row of corresponding data to deliver to destination fields
- * @param array() $controls - Process controls passed from the user interface. Elements mostly
- *   from $form_state['all_values'] include:
+ * @param array() $controls - Process controls passed from above.
  *
- *   parent_pid - The PID of the parent collection
- *   namespace - The namespace (no colon) to ingest new objects into
- *   inactive - Indicates if the ingested objects are to be Active or Inactive
  *   history - Name of the temporary file holding processed import history
  *   update - Indicates if this process is updating a previous import (has history) or if objects
  *     are all new
- *   constants - Associative array of constants, xpath => value pairs to be added to each row of
- *     the CSV and corresponding new object
- *   transform  @TODO - The path to the defined XSLT transform to be applied to new MODS records
- *   labelXPath  @TODO - The XPath to the data to be used as new object labels
  *
  * @return string|bool - The PID of the ingested object, or FALSE in case of an error
  */
@@ -280,15 +272,29 @@ function icg_csv_import_batch_item($head, $row, $controls) {
     return TRUE;
   }
 
-  // Invoke all hook_validate_csv functions.  Pass the array of $headers (xpaths) and
-  // $record (one row of CSV data). The hook function should return FALSE if there
+  // Invoke all hook_validate_csv_data functions.
+  // Pass the array of $headers (xpaths) and $record (data).  The hook function should return FALSE if there
   // are no problems; otherwise it should return an associative array of
   // content -> message pairs indicating the source of the problem (content) and
   // a message explaining what's wrong.
+  //
+  // ANYTHING wrong here will cause this line of data to be skipped!
 
-  $problems = module_invoke_all('validate_csv', $headers, $record);
-  if ($problems) {
-    // @TODO...Stop the process, or report the issues an move on?
+  $skip = FALSE;
+  $problems = module_invoke_all('validate_csv_data', $headers, $record);
+  foreach ($problems as $problem => $message) {
+    if ($problem) {
+      drupal_set_message("CSV data error encountered in '$problem'.  Description: $message ", 'warning');
+      $skip = TRUE;
+    }
+  }
+
+  // Echo the data into the history file and return FALSE to skip this data.
+  if ($skip) {
+    $fp = fopen($history,'a');            // open the history CSV file to append data
+    fputcsv($fp, $record, $delimiter);    // append $record as-is to the history
+    fclose($fp);
+    return FALSE;
   }
 
   // Build a simple MODS DOMDocument to hold the data.
@@ -442,18 +448,27 @@ function icg_csv_import_header_errors($head) {
 
   $headers = $head;
 
-  // Invoke all hook_validate_csv_header functions.  Pass the array of $headers (xpaths).
-  // Each hook function should return FALSE if there are no problems;
-  // otherwise $problems will be an associative array of
-  // content => message pairs indicating the source of
-  // the problem (content) and a message explaining what's wrong.
+  // Invoke all hook_validate_csv_header functions.
+  // Pass the array of $headers (xpaths).  The hook function should return FALSE if there
+  // are no problems; otherwise it should return an associative array of
+  // content -> message pairs indicating the source of the problem (content) and
+  // a message explaining what's wrong.
+  //
+  // ANYTHING wrong here should halt the process!
 
+  $halt = FALSE;
   $problems = module_invoke_all('validate_csv_header', $headers);
-  foreach ($problems as $problem) {
+  foreach ($problems as $problem => $message) {
     if ($problem) {
-      // @TODO...Stop the process, or report the issues an move on?
-      return $problem;
+      drupal_set_message("CSV header error encountered in '$problem'.  Description: $message ", 'error', FALSE);
+      $halt = TRUE;
     }
+  }
+
+  if ($halt) {
+    $msg = "Critical CSV header error encountered!  Aborting this process.";
+    drupal_set_message($msg, 'error', FALSE);
+    return FALSE;
   }
 
   // Build a simple MODS DOMDocument to test the Xpath structures.
