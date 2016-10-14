@@ -763,6 +763,8 @@ function _icg_make_new_object($existing, $parent_pid, $ns, $cmodel, $label, $mod
   if (strlen($label) < 1) {
     $term = (!$existing ? 'created' : 'updated');
     drupal_set_message("Object '$pid' was $term with NO label.", 'warning');
+    $msg = "You may need to introduce a LABEL column in your CSV data, or define the icg_csv_import_label_xpath variable prior to import.";
+    drupal_set_message($msg, 'status', FALSE);
   }
 
   // Do some derivative work if needed.
