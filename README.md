@@ -12,14 +12,23 @@ This module processes a single CSV file that contains the MODS metadata, file na
 
 ## Requirements
 
-This module requires the following library:
+This module requires the following:
 
 * [Tuque](https://github.com/islandora/tuque)
+* [ICG_Hooks](https://github.com/Islandora-Collaboration-Group/icg_hooks)
 
 Tuque is expected to be in one of two paths:
 
 * sites/all/libraries/tuque (libraries directory may need to be created)
 * islandora_folder/libraries/tuque
+
+The ICG_Hooks module is _optional_.  However, if you do not provide your own hooks the ICG_Hooks module will provide simple versions of the following functions:
+
+* icg_hooks_validate_csv_data($header, $data)
+* icg_hooks_validate_csv_header($xpaths)
+* icg_hooks_fetch_OBJ($path, $credentials)
+
+See [icg_csv_import.api.php](https://github.com/Islandora-Collaboration-Group/icg_csv_import/blob/master/icg_csv_import.api.php) for additional details.
 
 ## Installation
 
@@ -173,6 +182,7 @@ The complete set of Keys and their corresponding behavior in the system are docu
 * **OBJ_PREFIX** - A prefix, typically the network path to a directory containing the files named in an *OBJ* column.
 * **CMODEL** - The Islandora content model of the imported object.  Examples may include "islandora:sp\_basic\_image", "islandora:compoundCModel", etc.
 * **LABEL** - Indicates that corresponding data is to be used as the object label or title.
+* **MIME** - Indicates the MIME-type of the corresponding object.  Default is 'image/jpeg'.
 
 ##### Pipes
 
