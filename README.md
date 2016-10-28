@@ -336,14 +336,14 @@ The module will concatenate the OBJ_PREFIX and OBJ key fields together, with NO 
 
 Once an object has been successfully created, or updated, from a single line of CSV data, the module will perform the usual sequence of post-ingest actions: 
 
-1. The _islandora_add_object_ function is invoked.  At a miniumu, this will generate a new, or updated, DC daastream from the object's MODS datastream.
+1. The _islandora_add_object_ function is invoked.  At a minimum, this will generate a new, or updated, DC daastream from the object's MODS datastream.
 2. The module will regenerate all derivative datastreams as specified by the object's content model (CMODEL) with a call to the _islandora_run_derivatives_ function.
 3. The module invokes any *hook_create_object_post_ops* defined by the user.  See *icg_csv_import.api.php* for details.
  
 
 ### Launching a CSV Import
 
-CSV import processing is driven by a set of nine (9) Drupal variables.  The variables and their default values are:
+CSV import processing is driven by a set of ten (10) Drupal variables.  The variables and their default values are:
 
 Variable Name | Required? | Default Value |
 --------------|-----------|---------------|
@@ -354,6 +354,7 @@ icg_csv_import_username | No | _None_
 icg_csv_import_password | No | _None_
 icg_csv_import_namespace | **Yes** | islandora
 icg_csv_import_delimiter | **Yes** | tab
+icg_csv_import_mods-to-dc | No | _path/to/icg_csv_import_/mods-to-dc.xsl
 icg_csv_import_inactive | **Yes** | TRUE
 icg_csv_import_label_xpath | **Yes** | /mods/titleInfo/title
 
@@ -371,6 +372,7 @@ drush vset icg_csv_import_username 'ICG' |
 drush vset icg_csv_import_password 'anything' | 
 drush vset icg_csv_import_namespace 'islandora' |
 drush vset icg_csv_import_delimiter 'tab' |
+drush vset icg_csv_import_mods-to-dc 'sites/all/modules/icg_csv_import/mods-to-dc.xsl' |
 drush vset icg_csv_import_inactive TRUE |
 drush vset icg_csv_import_label_xpath '/mods/titleInfo/title' |
 
