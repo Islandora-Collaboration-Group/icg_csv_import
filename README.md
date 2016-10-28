@@ -262,6 +262,28 @@ This data was not part of the original data set, it was added by the cataloger u
 
 During batch processing, the module appends the constant file's XPath/Key cells to the CSV file's XPath/Key headers, and subsequently appends a copy of the single line of constants to each line of CSV data during processing.
 
+### OBJ Content Handling
+
+As mentioned earlier in this document, CSV Import provides the ability to download one content file per imported object.  The content can be an image, a PDF document, an audio recording, or any other content form supported by an accompanying Islandora content model. Specification of the file's path and file name can be provided in OBJ_PREFIX and OBJ key columns, respectively.  The corresponding specification of an object's content model can be provided in a CMODEL key column.
+ 
+OBJ content files are imported using a Drupal 'hook' function named *hook_fetch_OBJ* as documented in this module's *icg_csv_import.api.php* file. 
+ 
+Your *hook_fetch_OBJ* function will only be called if all three of the following input parameters (see the *CSV Import User Interface* section of this document) are provided:
+ 
+ * a complete and valid path to the content file,
+ * a valid username with permissions to read the content file, and 
+ * a corresponding, valid password to permit read access to the content path and file name.
+ 
+The module will concatenate the OBJ_PREFIX and OBJ key fields together, with NO additional separator, and pass the concatenated result to your *hook_fetch_OBJ* function.
+
+### Import Post-Processing
+
+Once an object has been successfully created, or updated, from a single line of CSV data, the module will perform the usual sequence of post-ingest actions: 
+
+1. The _islandora_add_object_ function is invoked.  At a minimum, this will generate a new, or updated, DC daastream from the object's MODS datastream.
+2. The module will regenerate all derivative datastreams as specified by the object's content model (CMODEL) with a call to the _islandora_run_derivatives_ function.
+3. The module invokes any *hook_create_object_post_ops* defined by the user.  See *icg_csv_import.api.php* for details.
+ 
 ### Output
 
 The CSV Import process is primarily intended to ingest new objects into existing Islandora collections, but it also produces an output file to document your import history, and to provide a mechanism for easily updating your imported objects.
@@ -314,28 +336,6 @@ The output from our re-import operation will be another complete CSV file, with 
 
 Rinse and repeat, as often as you like. The possibilities are endless. Powerful stuff indeed!
 
-### OBJ Content Handling
-
-As mentioned earlier in this document, CSV Import provides the ability to download one content file per imported object.  The content can be an image, a PDF document, an audio recording, or any other content form supported by an accompanying Islandora content model. Specification of the file's path and file name can be provided in OBJ_PREFIX and OBJ key columns, respectively.  The corresponding specification of an object's content model can be provided in a CMODEL key column.
- 
-OBJ content files are imported using a Drupal 'hook' function named *hook_fetch_OBJ* as documented in this module's *icg_csv_import.api.php* file. 
- 
-Your *hook_fetch_OBJ* function will only be called if all three of the following input parameters (see the *CSV Import User Interface* section of this document) are provided:
- 
- * a complete and valid path to the content file,
- * a valid username with permissions to read the content file, and 
- * a corresponding, valid password to permit read access to the content path and file name.
- 
-The module will concatenate the OBJ_PREFIX and OBJ key fields together, with NO additional separator, and pass the concatenated result to your *hook_fetch_OBJ* function.
-
-### Import Post-Processing
-
-Once an object has been successfully created, or updated, from a single line of CSV data, the module will perform the usual sequence of post-ingest actions: 
-
-1. The _islandora_add_object_ function is invoked.  At a minimum, this will generate a new, or updated, DC daastream from the object's MODS datastream.
-2. The module will regenerate all derivative datastreams as specified by the object's content model (CMODEL) with a call to the _islandora_run_derivatives_ function.
-3. The module invokes any *hook_create_object_post_ops* defined by the user.  See *icg_csv_import.api.php* for details.
- 
 
 ### Launching a CSV Import
 
