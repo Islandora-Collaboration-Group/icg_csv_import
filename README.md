@@ -99,6 +99,42 @@ In our example, the introduction of the "# Import Index" column, and the hashtag
 
 * **Use Single Quotes Around Attributes and NO Slashes** - Attributes within XPaths, like the "provenance" clause in */mods/note[@type=__'provenance'__]* should generally be enclosed in __single quotes__ as shown, not double.  Attribute values with embedded punctuation characters, especially slashes, like "/mods/note[@type='__citation/reference__']", should be avoided whenever possible.
 
+#### MODS Element Attributes
+
+You may add XML attributes to the values if those attributes are allowed in the MODS schema. Add the attribute after the value in this way:
+
+If you declare an attribute in the column header, that attribute applies to all values in the column and you don't have to declare it in each cell value.
+
+/mods/genre[@authority='marcgenre']  |
+-------------------------------------|
+correspondence  |
+photograph      |
+
+If you want to override that default attribute you may do so if the attribute is attached to the last element in the XPath:
+
+/mods/genre[@authority='marcgenre']  |
+-------------------------------------|
+correspondence[@authority='aat']     |
+photograph                           |
+
+If the attribute you are putting in the column header is not an attribute of the last element, you cannot override it.
+
+/mods/name[@type='personal']/namePart|
+-------------------------------------|
+Smith, John                          |
+
+Attributes introduced in the data (values) may have multiple attributes but they must be separated by 'and' operators.  For example: 
+
+/mods/name[@type='personal']/namePart[@type='given']|
+----------------------------------------------------|
+Mark[@type='given' **and** @displayLabel='First Name']|
+
+* Multiple values separated by a pipe may also include attributes. For example: 
+
+/mods/name[@type='personal']/namePart[@typee='family']|
+-----------------------------------------------------|
+Mark[@type='given'] **and** @displayLabel='First Name'] **\|** McFate[@displayLabel='Family Name'] |
+	
 #### XPaths and Keys
 
 The import process performed by this module is driven by simple XPath 1.0 statements and Keys or reserved keywords.  These XPath statements and Keys must appear in the **first row** of the CSV file as shown in the image below.
@@ -206,55 +242,17 @@ These are the Keys used and their corresponding behaviors.
 
 This section provides additional screen grabs from our sample data set. Each image depicts the same data, but with different highlighted features. 
 
-The use of *OBJ_PREFIX* and *CMODEL* keys is illustrated, and highlighted, in the image below.  Note that the values in the *OBJ_PREFIX* field are valid network directory paths.     
+The following figure shows the use of *OBJ_PREFIX* and *CMODEL* keys. The values in the *OBJ_PREFIX* field need to be valid network directory paths.     
 
 ![CSV Key Examples](documentation/images/Fossils-04.png?raw=true)
 
-XPaths with predicates, highlighted in blue, are illusrated in the next image. 
+The next figure shows XPaths with predicates, highlighted in blue. 
 
 ![CSV XPaths with Predicates](documentation/images/Fossils-05.png?raw=true)
 
-#### MODS Element Attributes
-
-You may add XML attributes to the values if those attributes are allowed in the MODS schema. Add the attribute after the value in this way:
-
-If you declare an attribute in the column header, that attribute applies to all values in the column and you don't have to declare it in each cell value.
-
-/mods/genre[@authority="marcgenre"]  |
--------------------------------------|
-correspondence  |
-photograph      |
-
-If you want to override that default attribute you may do so if the attribute is attached to the last element in the XPath:
-
-/mods/genre[@authority="marcgenre"]  |
--------------------------------------|
-correspondence[@authority="aat"]     |
-photograph                           |
-
-If the attribute you are putting in the column header is not an attribute of the last element, you cannot override it.
-
-/mods/name[@type="personal"]/namePart|
--------------------------------------|
-Smith, John                          |
-
-Element attributes introduced in the data (values) follow the same rules as attributes that appear in the XPath column headings.
-
-* An element may have multiple attributes if they are seperated by 'and' operators.  For example: 
-
-/mods/name[@type='personal']/namePart[@note='given']|
-----------------------------------------------------|
-Mark[@note='first name' **and** @displayLabel='First Name']|
-
-* Mulitple values seperated by a pipe may include element attributes.  For example: 
-
-/mods/name[@type='personal']/namePart[@note='family']|
------------------------------------------------------|
-Mark[@note='first name'] **and** @displayLabel='First Name'] **\|** McFate[@displayLabel='Family Name'] |
-	
 #### Constants
 
-Take note of the data in the highlighted portion of the image below. The data in these columns are 'constants'; the same value appears in every row within a particular column.   
+The data highlighted below are 'constants'; the same value appears in every row within a particular column.   
 
 ![CSV Constants](documentation/images/Fossils-06.png?raw=true)
 
@@ -262,27 +260,27 @@ This data was not part of the original data set, it was added by the cataloger u
 
 ![CSV Constants Example File](documentation/images/Fossils-07.png?raw=true)
 
-During batch processing, the module appends the constant file's XPath/Key cells to the CSV file's XPath/Key headers, and subsequently appends a copy of the single line of constants to each line of CSV data during.
+During batch processing, the module appends the constant file's XPath/Key cells to the CSV file's XPath/Key headers, and subsequently appends a copy of the single line of constants to each line of CSV data during processing.
 
 ### Output
 
 The CSV Import process is primarily intended to ingest new objects into existing Islandora collections, but it also produces an output file to document your import history, and to provide a mechanism for easily updating your imported objects.
 
-A portion of the output from import of our example data, is depicted in the image below.
+The following shows a portion of the output from import of our example data.
 
 ![CSV Output File](documentation/images/Fossils-08.png?raw=true)
 
-The highlighted column in this image was prepended to the CSV data during processing.  The first cell in this column is a time-stamp recording the date and time when the import was initiated. The values in the cells below are the PIDs of the objects generated during the import process, and these PIDs are prefixed with a hashtag to render each line in this output file as a comment.  
+The CSV Import module adds a column at the beginning of each row. The first cell in this column is a time-stamp recording the date and time when the import was initiated. The values in the cells below are the PIDs of the objects generated during the import process. The hashtags in this column render each line in this output file as a comment.  
 
-The output file maintains the field separator of the input file, so if a true CSV file, with comma field delimiters is used, then a true CSV file is output.  If a tab-delimited file is specified as input, a corresponding tab-delimited file is created as output.
+The output file keeps the same field separator found in the input file, so if the input file was a true CSV file, with comma field delimiters and quotation marks around values, then a true CSV file is output.  If a tab-delimited file is specified as input, a corresponding tab-delimited file is created as output.
 
-Note that all comments, including comment lines (where the first character in the first column is a hashtag), from the input file are echoed, without modification, in the output file.
+The output file retains all comments, including comment lines (where the first character in the first column is a hashtag), from the input file without modification.
 
-Also note that both the input CSV headers and data, as well as the constants headers and data, all appear in the output file.
+The output file also reatins the input CSV headers and data, as well as the constants headers and data.
 
 ### Re-Importing Data
 
-It is possible to edit a CSV output file and easily re-import the data with subtle or sweeping changes.  When data is re-imported there must be a valid time-stamp at the top of the first column, and each subsequent cell in that column must contain one of the following:
+It is possible to edit a CSV output file and easily re-import the data with subtle or even sweeping changes.  When data is re-imported there must be a valid time-stamp at the top of the first column, and each subsequent cell in that column must contain one of the following:
 
 * a comment (first character in the cell is a hashtag),
 * a valid object PID, or
