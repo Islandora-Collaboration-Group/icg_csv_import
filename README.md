@@ -73,9 +73,9 @@ The hashtag (#) can be used to specify a comment, and two rules govern them:
 * A hashtag as the **first character** in any value/cell identifies that value as a comment. A hashtag ion any other character position is simply interpreted as part of the data.
 * A hashtag as the **first character of the first cell in a row** identifies the entire row as a comment. 
 
-Comments in the CSV data are read and recorded during processing, but they are otherwise ignored.
+Comments in the CSV data are read and recorded in an output file during processing, but they are otherwise ignored.
 
-In our example, the introduction of "# Import Index" column, and the hashtag as the first character in the first cell of the headers row effectively renders all of the header cells as comments.  This is as it should be, because we don't want the system to import the headers!
+In our example, the introduction of the "# Import Index" column, and the hashtag as the first character in the first cell of the headers row effectively renders all of the header cells as comments.  This is as it should be, because we don't want the system to import the headers!
 
 #### XPaths and Keys
 
@@ -87,7 +87,7 @@ The first row, highlighted in blue in the above image, contains a set of XPath s
 
 ##### XPaths
 
-In the first column, the XPath is "/mods/note[@displayLabel='Import Index']".  This Xpath statement directs the module to import the corresponding column of data into a series of MODS datastreams.  The first row of data would generate the following MODS structure:
+In the first column, the header has the XPath "/mods/note[@displayLabel='Import Index']". This XPath statement directs the module to take the data from the column below it and put it in a MODS XML file with the following structure.
 
 	<mods>
 		<note displayLabel='Import Index'>1</note>
@@ -95,7 +95,7 @@ In the first column, the XPath is "/mods/note[@displayLabel='Import Index']".  T
 	
 The second column in this example contains the Key or keyword "OBJ".  Keys are discussed in the next section of this document.
 
-All of the remaining columns in our example contain XPath statements in row one. These XPaths, including the aforementioned statement at the top of the first colunm, will produce a MODS datastream for the first row of data as follows:
+Each of the remaining columns in our example spreadsheet contains an XPath statement and each row represents one MODS file. The first row of data in the example spreadsheet produces the following MODS structure:
 
 	<mods>
 		<note displayLabel='Import Index'>1</note>
