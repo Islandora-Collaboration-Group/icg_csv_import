@@ -66,6 +66,26 @@ It's good practice to introduce an additional column into your CSV data containi
 
 ![CSV Data with 'Import Index' Added](documentation/images/Fossils-02.png?raw=true)
 
+##### Pipes
+
+A pipe, the vertical bar character (|), is used to separate multiple values within a single field.  For example, the following sample of MODS metadata contains multiple "alternative" titles, and this kind of construct is easy to import.
+
+    <mods>
+   		<titleInfo type='alternative'>
+   	        <title>Grinnell College</title>
+	   		<title>Rand Gymnasium</title>
+	   		<title>women's gymnasium</title>
+	   		<title>men's gymnasium</title>
+        </titleInfo>
+   	</mods>	
+
+The XPath and corresponding data, with pipes, used to import this is shown below.
+
+    XPath   -> /mods/titleInfo[@type='alternative']/title
+    Data    -> Grinnell College|Rand Gymnasium|women's gymnasium|men's gymnasium
+
+You can include an unlimited number of pipes in any single field.
+
 #### Comments
 
 The hashtag (#) can be used to specify a comment, and two rules govern them:   
@@ -76,6 +96,8 @@ The hashtag (#) can be used to specify a comment, and two rules govern them:
 Comments in the CSV data are read and recorded in an output file during processing, but they are otherwise ignored.
 
 In our example, the introduction of the "# Import Index" column, and the hashtag as the first character in the first cell of the headers row effectively renders all of the header cells as comments.  This is as it should be, because we don't want the system to import the headers!
+
+* **Use Single Quotes Around Attributes and NO Slashes** - Attributes within XPaths, like the "provenance" clause in */mods/note[@type=__'provenance'__]* should generally be enclosed in __single quotes__ as shown, not double.  Attribute values with embedded punctuation characters, especially slashes, like "/mods/note[@type='__citation/reference__']", should be avoided whenever possible.
 
 #### XPaths and Keys
 
@@ -118,7 +140,7 @@ The XPath 1.0 specification includes many useful tools, but the CSV Import modul
 	* /mods/name[@type='personal']/namePart[@type='given']
 	* /mods/name[@type='personal' and @displayLabel='Main author']
 
-* **Elements can have Predicates, or Indicies** - Consider this common MODS construct having three &lt;name&gt; elements, where the same MODS element needs to be used more than once in the same file, we need to number them. This produces a "predicate" consisting of the element name and a number called its "index": name[1] and name[2].
+* **Elements can have Predicates, or Indicies** - It is not uncommon in MODS files to use the same element more than once. When this happens, as when there are, say, three &lt;name&gt; elements in one MODS file, we can keep them separate by referencing them by "predicates" consisting of the element name and a number called its "index": name[1] and name[2].
 
 		<mods>
 	   		<name type='personal'>
@@ -136,12 +158,12 @@ The XPath 1.0 specification includes many useful tools, but the CSV Import modul
 	   		<name type='corporate'>
 	   			<namePart>Widget Corp.</namePart>
 	   			<role>
-	   				<roleTerm> type='text'>Sponsor</roleTerm>
+	   				<roleTerm type='text'>Sponsor</roleTerm>
 	   			</role>
 	   		</name> 
 	   	</mods>	
 		
-	The XPaths and corresponding data (afer the arrow -->) look like this:
+	The XPaths and corresponding data (after the arrow -->) look like this:
 	
 		/mods/name[1][@type='personal']
 			/mods/name[1]/namePart  --> Doe, John
@@ -153,7 +175,7 @@ The XPath 1.0 specification includes many useful tools, but the CSV Import modul
 			/mods/name[3]/namePart  --> Widget Corp.
 			/mods/name[3]/role/roleTerm[@type='text']  --> Sponsor
 			
-	In this example, the predicates/indices [1], [2], and [3] are needed because there are three distinct *name* elements here, and the indicies ensure that the corresponding *role* elements are assigned to the correct *name*.		
+	In this example, the predicates/indices [1], [2], and [3] are needed because there are three distinct *name* elements here, and the indices ensure that the corresponding *role* elements are assigned to the correct *name*.		
 	Predicates always begin with the numeral [1], never [0].  A predicate should always preceed the attribute (if one is present) attached to an element.  A predicate is declared when it is first encountered on an element, and predicates must always be 'declared' in proper numeric order, but may be referenced in any order.  For example, the following is a valid set of elements with predicates:
 	
 		/mods/name[1], /mods/name[2], /mods/name[3], /mods/name[2]/role, /mods/name[1]/role
@@ -168,39 +190,17 @@ The XPath 1.0 specification includes many useful tools, but the CSV Import modul
 
 * **Complex XPaths are NOT Permitted** - As mentioned earlier, the XPath specification, even in version 1.0, provides numerous functions and constructs to perform complex node selection.  But CSV Import uses XPaths to build data, not to select it, so things like XPath functions and complex structures are not supported.
 
-* **Use Single Quotes Around Attributes and NO Slashes** - Attributes within XPaths, like the "provenance" clause in */mods/note[@type=__'provenance'__]* should generally be enclosed in __single quotes__ as shown, not double.  Attribute values with embedded punctuation characters, espeically slashes, like "/mods/note[@type='__citation/reference__']", should be avoided whenever possible.
-
 ##### Keys
 
-Keys, or keywords, like *OBJ* in the second column of our example, are always expressed in uppercase.  *OBJ* is the keyword which informs the system to read a filename from the corresponding data, and the file identifed by *OBJ* may be subsequently downloaded and saved as the object's content datastream with a datastream ID of OBJ.
+Keys, or keywords, like *OBJ* in the second column of our example, are always expressed in uppercase. Each Key triggers specific behaviors in the CSV Import module. For example, the *OBJ* keyword informs the system to read a filename from the corresponding data, cell to download the file and saved it with a datastream ID of OBJ.
 
-The complete set of Keys and their corresponding behavior in the system are documented here.
+These are the Keys used and their corresponding behaviors.
 
 * **OBJ** - The filename, or complete network path, to an object's OBJ (content) datastream.
 * **OBJ_PREFIX** - A prefix, typically the network path to a directory containing the files named in an *OBJ* column.
 * **CMODEL** - The Islandora content model of the imported object.  Examples may include "islandora:sp\_basic\_image", "islandora:compoundCModel", etc.
-* **LABEL** - Indicates that corresponding data is to be used as the object label or title.
-* **MIME** - Indicates the MIME-type of the corresponding object.  Default is 'image/jpeg'.
-
-##### Pipes
-
-A pipe, the vertical bar character (|), is used to separate multiple values within a single field.  For example, the following sample of MODS metadata contains multiple "alternative" titles, and this kind of construct is easy to import.
-
-    <mods>
-   		<titleInfo type='alternative'>
-   	        <title>Grinnell College</title>
-	   		<title>Rand Gymnasium</title>
-	   		<title>women's gymnasium</title>
-	   		<title>men's gymnasium</title>
-        </titleInfo>
-   	</mods>	
-
-The XPath and corresponding data, with pipes, used to import this is shown below.
-
-    XPath   -> /mods/titleInfo[@type='alternative']/title
-    Data    -> Grinnell College|Rand Gymnasium|women's gymnasium|men's gymnasium
-
-You can include an unlimited number of pipes in any single field.
+* **LABEL** - The object label or title.
+* **MIME** - The MIME-type of the object (OBJ). The default is 'image/jpeg'.
 
 ##### More Examples
 
