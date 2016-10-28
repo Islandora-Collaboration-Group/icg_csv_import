@@ -757,6 +757,38 @@ function _icg_make_new_object($existing, $parent_pid, $ns, $cmodel, $label, $mod
     }
   }
 
+  // Run the specified MODS-to-DC transform, if any.
+  $modsToDC = variable_get('icg_csv_import_mods-to-dc', drupal_get_path('module', 'icg_csv_import').'/mods-to-dc.xsl');
+  if (!$transform = fopen($modsToDC, 'r')) {
+    drupal_set_message("Could not open MODS-to-DC transform file '$modsToDC'.", 'error', FALSE);
+    return FALSE;
+  } else {
+    fclose($transform);
+  }
+
+  $xml = new DOMDocument;
+  if (!$xml->loadXML($mods)) {
+    drupal_set_message("Could not load $object->id MODS for transform to DC.", 'error');
+    return FALSE;
+  }
+
+  $xsl = new DOMDocument;
+  if (!$xsl->load($modsToDC)) {
+    drupal_set_message("Could not load '$modsToDC' as XSLT for MODS-to-DC transform.", 'error', FALSE);
+    return FALSE;
+  }
+
+  $xslt = new XSLTProcessor;
+  $xslt->importStyleSheet($xsl);   // attach the xsl rules
+  $dc = $xslt->transformToXML($xml);     // do it
+
+  $dsid = 'DC';
+  $datastream = $object->constructDatastream($dsid, 'X');
+  $datastream->label = 'Dublin Core Record';
+  $datastream->mimeType = 'text/xml';
+  $datastream->setContentFromString($dc);
+  $object->ingestDatastream($datastream);   // save transform product as DC datastream
+
   // Ingest the new object into Fedora.
   $pid = $object->id;
   if (!$existing) { islandora_add_object($object); }

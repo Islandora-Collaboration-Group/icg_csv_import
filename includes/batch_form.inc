@@ -13,6 +13,7 @@
  drush vset icg_csv_import_delimiter 'tab'
  drush vset icg_csv_import_inactive TRUE
  drush vset icg_csv_import_label_xpath '/mods/titleInfo/title'
+ drush vset icg_csv_import_mods-to-dc 'mods-to-dc.xsl'
  *
  */
 
@@ -67,6 +68,10 @@ function icg_csv_import_form($form, &$form_state, $collection) {
 
   $form['label_xpath'] = array(
     '#markup' => "The object LABEL xpath is: <b>".variable_get('icg_csv_import_label_xpath', '/mods/titleInfo/title')."</b><br/>",
+  );
+
+  $form['mods_to_dc'] = array(
+    '#markup' => "The MODS-to-DC transform file is: <b>".variable_get('icg_csv_import_mods-to-dc', drupal_get_path('module', 'icg_csv_import').'/mods-to-dc.xsl')."</b><br/>",
   );
 
   $username = variable_get('icg_csv_import_username', '');
