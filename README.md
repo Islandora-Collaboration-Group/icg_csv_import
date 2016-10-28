@@ -116,9 +116,9 @@ The XPath 1.0 specification includes many useful tools, but the CSV Import modul
 	* /mods/titleInfo/title
 	* /mods/name/namePart[@type='given']
 	* /mods/name[@type='personal']/namePart[@type='given']
-	* /mods/name[@type='personal' and @displayLabel='given']
+	* /mods/name[@type='personal' and @displayLabel='Main author']
 
-* **Elements can have Predicates, or Indicies** - Some data constructs require the use of element predicates or indicies.  Consider this common MODS construct:
+* **Elements can have Predicates, or Indicies** - Consider this common MODS construct having three &lt;name&gt; elements, where the same MODS element needs to be used more than once in the same file, we need to number them. This produces a "predicate" consisting of the element name and a number called its "index": name[1] and name[2].
 
 		<mods>
 	   		<name type='personal'>
