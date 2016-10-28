@@ -62,11 +62,9 @@ The initial/raw CSV data for our example (before we add the row of MODS XPaths) 
 
 In the preceeding image, the row of data highlighted in blue contains CSV 'headers', or descriptions, while all other rows contain data to be imported.  Note that some cells are empty and some cells contain commas within.  Both empty cells and embedded commas are permitted, but if commas are present in any data field, care should be taken to save the file with tab or other non-comma delimiters.  Or, if data is exported in a true CSV file, care should be taken to ensure that all values are enclosed in double quotes. 
 
-It's good practice to introduce an additional column into your CSV data containing row numbers as illustrated below to ensure you can restore the original order if necessary.
+It's good practice to introduce an additional column into your CSV data containing row numbers as illustrated below to ensure you can restore the original order if necessary. The header, "# Import Index" in this colunn is also significant because it begins with a hashtag (or pound) symbol. It is the sign of a comment.
 
 ![CSV Data with 'Import Index' Added](documentation/images/Fossils-02.png?raw=true)
-
-In the preceeding image, the column of data highlighted in blue has been prepended to the CSV data.  This column is optional and is intended to hold a simple sequence number for each row of data.  If the data is sorted while preparring for import, this column can be used to easily restore the original order.  The header, "# Import Index" in this colunn is also significant because it begins with a hashtag (or pound) symbol.  
 
 #### Comments
 
