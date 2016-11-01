@@ -272,7 +272,9 @@ function icg_csv_import_batch_item($head, $row, $controls) {
     return TRUE;
   }
 
-  // Invoke all hook_validate_csv_data functions.
+  // Invoke hook_validate_csv_data functions.  If more than one module implements this
+  // then skip the ICG_Hooks implementation.
+  //
   // Pass the array of $headers (xpaths) and $record (data).  The hook function should return FALSE if there
   // are no problems; otherwise it should return an associative array of
   // content -> message pairs indicating the source of the problem (content) and
@@ -281,7 +283,13 @@ function icg_csv_import_batch_item($head, $row, $controls) {
   // ANYTHING wrong here will cause this line of data to be skipped!
 
   $skip = FALSE;
-  $problems = module_invoke_all('validate_csv_data', $headers, $record);
+  $problems = array( );
+
+  $hooks = module_implements('validate_csv_data');
+  if (count($hooks) > 1 && in_array('icg_hooks', $hooks)) { unset($hooks['icg_hooks']); }
+  foreach ($hooks as $hook) { $problems[] = module_invoke($hook, 'validate_csv_data', $headers, $record); }
+  // $problems = module_invoke_all('validate_csv_data', $headers, $record);
+
   foreach ($problems as $problem => $message) {
     if ($problem) {
       drupal_set_message("CSV data error encountered in '$problem'.  Description: $message ", 'warning');
@@ -450,7 +458,8 @@ function icg_csv_import_header_errors($head) {
 
   $headers = $head;
 
-  // Invoke all hook_validate_csv_header functions.
+  // Invoke hook_validate_csv_header functions.  If hooks other than ICG_Hooks are defined, skip ICG_Hooks.
+  //
   // Pass the array of $headers (xpaths).  The hook function should return FALSE if there
   // are no problems; otherwise it should return an associative array of
   // content -> message pairs indicating the source of the problem (content) and
@@ -459,7 +468,13 @@ function icg_csv_import_header_errors($head) {
   // ANYTHING wrong here should halt the process!
 
   $halt = FALSE;
-  $problems = module_invoke_all('validate_csv_header', $headers);
+  $problems = array( );
+
+  $hooks = module_implements('validate_csv_header');
+  if (count($hooks) > 1 && in_array('icg_hooks', $hooks)) { unset($hooks['icg_hooks']); }
+  foreach ($hooks as $hook) { $problems[] = module_invoke($hook, 'validate_csv_header', $headers); }
+  // $problems = module_invoke_all('validate_csv_header', $headers);
+
   foreach ($problems as $problem => $message) {
     if ($problem) {
       drupal_set_message("CSV header error encountered in '$problem'.  Description: $message ", 'error', FALSE);
@@ -541,7 +556,10 @@ function _fetch_CSV_defaults( ) {
 
 
 /**
- * Call any/all registered hook_fetch_OBJ functions.
+ * Call any/all registered hook_fetch_OBJ functions.  If a hook function other
+ * than ICG_Hooks is defined, skip ICG_Hooks.
+ *
+ * Note: This function returns ONLY ONE fetch_OBJ call!
  *
  * @param string $path - Path of the content (file) to fetch.
  * @param array $credentials
@@ -550,8 +568,16 @@ function _fetch_CSV_defaults( ) {
  */
 function _fetch_OBJ($path, $credentials) {
   // Call all modules implementing 'hook_fetch_OBJ':
-  $return = module_invoke_all('fetch_OBJ', $path, $credentials);
-  return $return[0];
+
+  $hooks = module_implements('fetch_OBJ');
+  if (count($hooks) > 1 && in_array('icg_hooks', $hooks)) {
+    unset($hooks['icg_hooks']);
+  }
+  foreach ($hooks as $hook) {
+    $return = module_invoke($hook, 'fetch_OBJ', $path, $credentials);
+    //  $return = module_invoke_all('fetch_OBJ', $path, $credentials);
+    return $return;
+  }
 }
 
 /**
@@ -878,22 +904,26 @@ function _make_node($doc, $parent, $element, $attributes, $value=NULL) {
   // and attach the text to the element.
 
   if ($value) {
-    list($data, $attr) = explode("[@", $value);
-    if ($attr) {
-      $pairs = _parseAttributes($attr, FALSE);    // append data attributes to header $attributes
-      foreach ($pairs as $name => $val) {
-        try {
-          if (!$localAttr[$name] = $doc->createAttribute($name)) {
-            $msg = "createAttribute($name) in data '$value' returned FALSE.  Check your Xpath!";
-            throw new Exception($msg);
+    if (strpos(" $value",'[@')) {
+      list($data, $attr) = explode("[@", $value);
+      if ($attr) {
+        $pairs = _parseAttributes($attr, FALSE);    // append data attributes to header $attributes
+        foreach ($pairs as $name => $val) {
+          try {
+            if (!$localAttr[$name] = $doc->createAttribute($name)) {
+              $msg = "createAttribute($name) in data '$value' returned FALSE.  Check your Xpath!";
+              throw new Exception($msg);
+            }
+            $localAttr[$name]->value = $val;
+          } catch (Exception $e) { // catch all exceptions
+            drupal_set_message("Attribute error in '$name' while parsing data '$value'. Message: "
+              . $e->getMessage(), 'error');
+            return;
           }
-          $localAttr[$name]->value = $val;
-        } catch (Exception $e) { // catch all exceptions
-          drupal_set_message("Attribute error in '$name' while parsing data '$value'. Message: "
-            . $e->getMessage(), 'error');
-          return;
         }
       }
+    } else {
+      $data = $value;
     }
 
     if (!$text = $doc->createTextNode(trim($data))) {   // save $data as new $text node
