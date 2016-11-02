@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="description" content="ICG CSV Import : CSV Import utility">
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>ICG CSV Import</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/Islandora-Collaboration-Group/icg_csv_import">View on GitHub</a>
+
+          <h1 id="project_title">ICG CSV Import</h1>
+          <h2 id="project_tagline">CSV Import utility</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/Islandora-Collaboration-Group/icg_csv_import/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/Islandora-Collaboration-Group/icg_csv_import/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h1>
+<a id="icg-csv-import-module" class="anchor" href="#icg-csv-import-module" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>ICG CSV Import Module</h1>
+
+<h2>
+<a id="introduction" class="anchor" href="#introduction" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Introduction</h2>
+
+<p>This module processes a single CSV file that contains the MODS metadata, file names for binary data files, and related information required to create Islandora/Fedora object. Each row represents one object.</p>
+
+<p>-Currently the module ingests only objects composed of one binary data file. It does not ingest objects such as two-image postcards, books, and so on.</p>
+
+
+
+<p>-All bugs, feature requests and improvement suggestions should be submitted as an Issue on the ICG github repo (<a href="https://github.com/Islandora-Collaboration-Group/icg_csv_import).-">https://github.com/Islandora-Collaboration-Group/icg_csv_import).-</a></p>
+
+<h2>
+<a id="requirements" class="anchor" href="#requirements" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Requirements</h2>
+
+<p>This module requires the following:</p>
+
+<ul>
+<li><a href="https://github.com/islandora/tuque">Tuque</a></li>
+<li><a href="https://github.com/Islandora-Collaboration-Group/icg_hooks">ICG_Hooks</a></li>
+</ul>
+
+<p>Tuque is expected to be in one of two paths:</p>
+
+<ul>
+<li>sites/all/libraries/tuque (libraries directory may need to be created)</li>
+<li>islandora_folder/libraries/tuque</li>
+</ul>
+
+<p>The ICG_Hooks module is <em>optional</em>.  However, if you do not provide your own hooks the ICG_Hooks module will provide simple versions of the following functions:</p>
+
+<ul>
+<li>icg_hooks_validate_csv_data($header, $data)</li>
+<li>icg_hooks_validate_csv_header($xpaths)</li>
+<li>icg_hooks_fetch_OBJ($path, $credentials)</li>
+</ul>
+
+<p>See <a href="https://github.com/Islandora-Collaboration-Group/icg_csv_import/blob/master/icg_csv_import.api.php">icg_csv_import.api.php</a> for additional details.</p>
+
+<h2>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Installation</h2>
+
+<p>Install this module as any other Islandora Drupal module in sites/all/modules.</p>
+
+<h2>
+<a id="configuration" class="anchor" href="#configuration" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Configuration</h2>
+
+<p>There is no Drupal configuration menu for this module.</p>
+
+<h2>
+<a id="documentation" class="anchor" href="#documentation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Documentation</h2>
+
+<p>The input data file, referred to here as a CSV file, may actually employ any reasonable field separator. Commas are most often used, hence the term comma-separated-values or CSV, but other delimiters like tabs or semi-colons may be used. </p>
+
+<p>'Pipe' or vertical bar delimiters are used to separate multiple values <strong>within</strong> fields, so pipes should NOT be used to delimit the fields themselves.  Values should be enclosed in quotation marks (double quotes, not single) when possible.</p>
+
+<p>"Smith, John|Jones, William"</p>
+
+<p>For sample CSV files see the "examples" directory. </p>
+
+<p>The batch process used to import CSV data is file-driven, with most of the necessary input stored directly in the CSV data file. [A separate module is being developed that will provides a GUI to assist with building a suitably structured CSV file.]</p>
+
+<h3>
+<a id="csv-file-structure" class="anchor" href="#csv-file-structure" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>CSV File Structure</h3>
+
+<p>As indicated above, this module relies on a suitably structured CSV file to drive its batch processing, but the structure of that file can be relatively flexible.  A small sample of CSV data from a fossils collection in the Grinnell College Geology Collection is used, below, to illustrate features of this CSV file structure. The samples here are annotated screen grabs of the data as it appears in Excel, but any means of editing/preparing CSV data may be employed.</p>
+
+<p>A good example of a CSV file can be found in Google Sheets at <a href="https://docs.google.com/spreadsheets/d/159ry2KDKYLHssGjPi3ypNtOy6IN6cgvNLg1O2TsFuTI/edit?usp=sharing">https://docs.google.com/spreadsheets/d/159ry2KDKYLHssGjPi3ypNtOy6IN6cgvNLg1O2TsFuTI/edit?usp=sharing</a>.  This 'template' also includes a bit of documenation describing the process and best practices.</p>
+
+<p>The initial/raw CSV data for our example (before we add the row of MODS XPaths) looks like this in Excel:</p>
+
+<p><img src="documentation/images/Fossils-01.png?raw=true" alt="Raw CSV Data"></p>
+
+<p>In the preceeding image, the row of data highlighted in blue contains CSV 'headers', or descriptions, while all other rows contain data to be imported.  Note that some cells are empty and some cells contain commas within.  Both empty cells and embedded commas are permitted, but if commas are present in any data field, care should be taken to save the file with tab or other non-comma delimiters.  Or, if data is exported in a true CSV file, care should be taken to ensure that all values are enclosed in double quotes. </p>
+
+<p>It's good practice to introduce an additional column into your CSV data containing row numbers as illustrated below to ensure you can restore the original order if necessary. The header, "# Import Index" in this colunn is also significant because it begins with a hashtag (or pound) symbol. It is the sign of a comment.</p>
+
+<p><img src="documentation/images/Fossils-02.png?raw=true" alt="CSV Data with 'Import Index' Added"></p>
+
+<h5>
+<a id="pipes" class="anchor" href="#pipes" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Pipes</h5>
+
+<p>A pipe, the vertical bar character (|), is used to separate multiple values within a single field.  For example, the following sample of MODS metadata contains multiple "alternative" titles, and this kind of construct is easy to import.</p>
+
+<pre><code>&lt;mods&gt;
+    &lt;titleInfo type='alternative'&gt;
+        &lt;title&gt;Grinnell College&lt;/title&gt;
+        &lt;title&gt;Rand Gymnasium&lt;/title&gt;
+        &lt;title&gt;women's gymnasium&lt;/title&gt;
+        &lt;title&gt;men's gymnasium&lt;/title&gt;
+    &lt;/titleInfo&gt;
+&lt;/mods&gt; 
+</code></pre>
+
+<p>The XPath and corresponding data, with pipes, used to import this is shown below.</p>
+
+<pre><code>XPath   -&gt; /mods/titleInfo[@type='alternative']/title
+Data    -&gt; Grinnell College|Rand Gymnasium|women's gymnasium|men's gymnasium
+</code></pre>
+
+<p>You can include an unlimited number of pipes in any single field.</p>
+
+<h4>
+<a id="comments" class="anchor" href="#comments" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Comments</h4>
+
+<p>The hashtag (#) can be used to specify a comment, and two rules govern them:   </p>
+
+<ul>
+<li>A hashtag as the <strong>first character</strong> in any value/cell identifies that value as a comment. A hashtag ion any other character position is simply interpreted as part of the data.</li>
+<li>A hashtag as the <strong>first character of the first cell in a row</strong> identifies the entire row as a comment. </li>
+</ul>
+
+<p>Comments in the CSV data are read and recorded in an output file during processing, but they are otherwise ignored.</p>
+
+<p>In our example, the introduction of the "# Import Index" column, and the hashtag as the first character in the first cell of the headers row effectively renders all of the header cells as comments.  This is as it should be, because we don't want the system to import the headers!</p>
+
+<ul>
+<li>
+<strong>Use Single Quotes Around Attributes and NO Slashes</strong> - Attributes within XPaths, like the "provenance" clause in <em>/mods/note[<a href="https://github.com/type" class="user-mention">@type</a>=<strong>'provenance'</strong>]</em> should generally be enclosed in <strong>single quotes</strong> as shown, not double.  Attribute values with embedded punctuation characters, especially slashes, like "/mods/note[<a href="https://github.com/type" class="user-mention">@type</a>='<strong>citation/reference</strong>']", should be avoided whenever possible.</li>
+</ul>
+
+<h4>
+<a id="mods-element-attributes" class="anchor" href="#mods-element-attributes" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>MODS Element Attributes</h4>
+
+<p>You may add XML attributes to the values if those attributes are allowed in the MODS schema. Add the attribute after the value in this way:</p>
+
+<p>If you declare an attribute in the column header, that attribute applies to all values in the column and you don't have to declare it in each cell value.</p>
+
+<table>
+<thead>
+<tr>
+<th>/mods/genre[<a href="https://github.com/authority" class="user-mention">@authority</a>='marcgenre']</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>correspondence</td>
+</tr>
+<tr>
+<td>photograph</td>
+</tr>
+</tbody>
+</table>
+
+<p>If you want to override that default attribute you may do so if the attribute is attached to the last element in the XPath:</p>
+
+<table>
+<thead>
+<tr>
+<th>/mods/genre[<a href="https://github.com/authority" class="user-mention">@authority</a>='marcgenre']</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>correspondence[<a href="https://github.com/authority" class="user-mention">@authority</a>='aat']</td>
+</tr>
+<tr>
+<td>photograph</td>
+</tr>
+</tbody>
+</table>
+
+<p>If the attribute you are putting in the column header is not an attribute of the last element, you cannot override it.</p>
+
+<table>
+<thead>
+<tr>
+<th>/mods/name[<a href="https://github.com/type" class="user-mention">@type</a>='personal']/namePart</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Smith, John</td>
+</tr>
+</tbody>
+</table>
+
+<p>Attributes introduced in the data (values) may have multiple attributes but they must be separated by 'and' operators.  For example: </p>
+
+<table>
+<thead>
+<tr>
+<th>/mods/name[<a href="https://github.com/type" class="user-mention">@type</a>='personal']/namePart[<a href="https://github.com/type" class="user-mention">@type</a>='given']</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mark[<a href="https://github.com/type" class="user-mention">@type</a>='given' <strong>and</strong> @displayLabel='First Name']</td>
+</tr>
+</tbody>
+</table>
+
+<ul>
+<li>Multiple values separated by a pipe may also include attributes. For example: </li>
+</ul>
+
+<table>
+<thead>
+<tr>
+<th>/mods/name[<a href="https://github.com/type" class="user-mention">@type</a>='personal']/namePart[<a href="https://github.com/typee" class="user-mention">@typee</a>='family']</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mark[<a href="https://github.com/type" class="user-mention">@type</a>='given'] <strong>and</strong> @displayLabel='First Name'] <strong>|</strong> McFate[@displayLabel='Family Name']</td>
+</tr>
+</tbody>
+</table>
+
+<h4>
+<a id="xpaths-and-keys" class="anchor" href="#xpaths-and-keys" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>XPaths and Keys</h4>
+
+<p>The import process performed by this module is driven by simple XPath 1.0 statements and Keys or reserved keywords.  These XPath statements and Keys must appear in the <strong>first row</strong> of the CSV file as shown in the image below.</p>
+
+<p><img src="documentation/images/Fossils-03.png?raw=true" alt="CSV Data with XPaths"></p>
+
+<p>The first row, highlighted in blue in the above image, contains a set of XPath statments and one Key, or keyword. </p>
+
+<h5>
+<a id="xpaths" class="anchor" href="#xpaths" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>XPaths</h5>
+
+<p>In the first column, the header has the XPath "/mods/note[@displayLabel='Import Index']". This XPath statement directs the module to take the data from the column below it and put it in a MODS XML file with the following structure.</p>
+
+<pre><code>&lt;mods&gt;
+    &lt;note displayLabel='Import Index'&gt;1&lt;/note&gt;
+&lt;/mods&gt; 
+</code></pre>
+
+<p>The second column in this example contains the Key or keyword "OBJ".  Keys are discussed in the next section of this document.</p>
+
+<p>Each of the remaining columns in our example spreadsheet contains an XPath statement and each row represents one MODS file. The first row of data in the example spreadsheet produces the following MODS structure:</p>
+
+<pre><code>&lt;mods&gt;
+    &lt;note displayLabel='Import Index'&gt;1&lt;/note&gt;
+    &lt;identifier type='local'&gt;EM-07-01&lt;/identifier&gt;
+    &lt;titleInfo&gt;&lt;title&gt;Neuropteris hirsuta&lt;/title&gt;&lt;/titleInfo&gt;
+    &lt;subject&gt;
+        &lt;temporal&gt;Pensylvanian, Upper Carboniferous Francis Creek Shale&lt;/temporal&gt;
+        &lt;geographic&gt;Mazon Creek, Grundy Co., Ill., Coal Measures&lt;/geographic&gt;
+    &lt;/subject&gt;
+&lt;/mods&gt; 
+</code></pre>
+
+<h5>
+<a id="xpath-rules" class="anchor" href="#xpath-rules" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>XPath Rules</h5>
+
+<p>The XPath 1.0 specification includes many useful tools, but the CSV Import module is restricted to using very simple XPath statements as outlined in the following rules.</p>
+
+<ul>
+<li>
+<p><strong>Multiple static attributes using 'and' syntax</strong> - Attributes, like type='local' in the identifier column of our example, may be concatenated using [<a href="https://github.com/first" class="user-mention">@first</a>='one' and <a href="https://github.com/second" class="user-mention">@second</a>='two' and <a href="https://github.com/third" class="user-mention">@third</a>='three'] syntax.  Under this rule the following XPaths are valid:</p>
+
+<ul>
+<li>/mods/titleInfo/title</li>
+<li>/mods/name/namePart[<a href="https://github.com/type" class="user-mention">@type</a>='given']</li>
+<li>/mods/name[<a href="https://github.com/type" class="user-mention">@type</a>='personal']/namePart[<a href="https://github.com/type" class="user-mention">@type</a>='given']</li>
+<li>/mods/name[<a href="https://github.com/type" class="user-mention">@type</a>='personal' and @displayLabel='Main author']</li>
+</ul>
+</li>
+<li>
+<p><strong>Elements can have Predicates, or Indicies</strong> - It is not uncommon in MODS files to use the same element more than once. When this happens, as when there are, say, three &lt;name&gt; elements in one MODS file, we can keep them separate by referencing them by "predicates" consisting of the element name and a number called its "index": name[1] and name[2].</p>
+
+<pre><code>&lt;mods&gt;
+    &lt;name type='personal'&gt;
+        &lt;namePart&gt;Doe, John&lt;/namePart&gt;
+        &lt;role&gt;
+            &lt;roleTerm type='text'&gt;Gentleman&lt;/roleTerm&gt;
+        &lt;/role&gt;
+    &lt;/name&gt;
+    &lt;name type='personal'&gt;
+        &lt;namePart&gt;Doe, Jane&lt;/namePart&gt;
+        &lt;role&gt;
+            &lt;roleTerm type='text'&gt;Lady&lt;/roleTerm&gt;
+        &lt;/role&gt;
+    &lt;/name&gt;
+    &lt;name type='corporate'&gt;
+        &lt;namePart&gt;Widget Corp.&lt;/namePart&gt;
+        &lt;role&gt;
+            &lt;roleTerm type='text'&gt;Sponsor&lt;/roleTerm&gt;
+        &lt;/role&gt;
+    &lt;/name&gt; 
+&lt;/mods&gt; 
+</code></pre>
+
+<p>The XPaths and corresponding data (after the arrow --&gt;) look like this:</p>
+
+<pre><code>/mods/name[1][@type='personal']
+    /mods/name[1]/namePart  --&gt; Doe, John
+    /mods/name[1]/role/roleTerm[@type='text']  --&gt; Gentleman
+/mods/name[2][@type='personal']
+    /mods/name[2]/namePart  --&gt; Doe, Jane
+    /mods/name[2]/role/roleTerm[@type='text']  --&gt; Lady
+/mods/name[3][@type='corporate']
+    /mods/name[3]/namePart  --&gt; Widget Corp.
+    /mods/name[3]/role/roleTerm[@type='text']  --&gt; Sponsor
+</code></pre>
+
+<p>In this example, the predicates/indices [1], [2], and [3] are needed because there are three distinct <em>name</em> elements here, and the indices ensure that the corresponding <em>role</em> elements are assigned to the correct <em>name</em>.<br>
+Predicates always begin with the numeral [1], never [0].  A predicate should always preceed the attribute (if one is present) attached to an element.  A predicate is declared when it is first encountered on an element, and predicates must always be 'declared' in proper numeric order, but may be referenced in any order.  For example, the following is a valid set of elements with predicates:</p>
+
+<pre><code>/mods/name[1], /mods/name[2], /mods/name[3], /mods/name[2]/role, /mods/name[1]/role
+</code></pre>
+
+<p>This is a valid sequnce of XPaths because <em>name[1]</em> is declared before <em>name[2]</em>, which is declared before <em>name[3]</em>.  <em>/mods/name[2]/role</em> appears before <em>/mods/name[1]/role</em> but this is permitted since these are not declarations of the predicates, they are referenes to predicates which have already been declared.</p>
+
+<p>An invalid sequence of XPaths might look like this:</p>
+
+<pre><code>/mods/name[1], /mods/name[3]/role, /mods/name[2]/role
+</code></pre>
+
+<p>Note that in the line above the declaration of <em>name[3]</em> appears before the declaration of <em>name[2]</em> and this may create errors in the imported data.</p>
+</li>
+<li><p><strong>Complex XPaths are NOT Permitted</strong> - As mentioned earlier, the XPath specification, even in version 1.0, provides numerous functions and constructs to perform complex node selection.  But CSV Import uses XPaths to build data, not to select it, so things like XPath functions and complex structures are not supported.</p></li>
+</ul>
+
+<h5>
+<a id="keys" class="anchor" href="#keys" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Keys</h5>
+
+<p>Keys, or keywords, like <em>OBJ</em> in the second column of our example, are always expressed in uppercase. Each Key triggers specific behaviors in the CSV Import module. For example, the <em>OBJ</em> keyword informs the system to read a filename from the corresponding data, cell to download the file and saved it with a datastream ID of OBJ.</p>
+
+<p>These are the Keys used and their corresponding behaviors.</p>
+
+<ul>
+<li>
+<strong>OBJ</strong> - The filename, or complete network path, to an object's OBJ (content) datastream.</li>
+<li>
+<strong>OBJ_PREFIX</strong> - A prefix, typically the network path to a directory containing the files named in an <em>OBJ</em> column.</li>
+<li>
+<strong>CMODEL</strong> - The Islandora content model of the imported object.  Examples may include "islandora:sp_basic_image", "islandora:compoundCModel", etc.</li>
+<li>
+<strong>LABEL</strong> - The object label or title.</li>
+<li>
+<strong>MIME</strong> - The MIME-type of the object (OBJ). The default is 'image/jpeg'.</li>
+</ul>
+
+<h5>
+<a id="more-examples" class="anchor" href="#more-examples" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>More Examples</h5>
+
+<p>This section provides additional screen grabs from our sample data set. Each image depicts the same data, but with different highlighted features. </p>
+
+<p>The following figure shows the use of <em>OBJ_PREFIX</em> and <em>CMODEL</em> keys. The values in the <em>OBJ_PREFIX</em> field need to be valid network directory paths.     </p>
+
+<p><img src="documentation/images/Fossils-04.png?raw=true" alt="CSV Key Examples"></p>
+
+<p>The next figure shows XPaths with predicates, highlighted in blue. </p>
+
+<p><img src="documentation/images/Fossils-05.png?raw=true" alt="CSV XPaths with Predicates"></p>
+
+<h4>
+<a id="constants" class="anchor" href="#constants" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Constants</h4>
+
+<p>The data highlighted below are 'constants'; the same value appears in every row within a particular column.   </p>
+
+<p><img src="documentation/images/Fossils-06.png?raw=true" alt="CSV Constants"></p>
+
+<p>This data was not part of the original data set, it was added by the cataloger using a special 'constants' CSV file.  That file, depicted in the image below, contains only an XPaths/Keys header row, and a single row of data.    </p>
+
+<p><img src="documentation/images/Fossils-07.png?raw=true" alt="CSV Constants Example File"></p>
+
+<p>During batch processing, the module appends the constant file's XPath/Key cells to the CSV file's XPath/Key headers, and subsequently appends a copy of the single line of constants to each line of CSV data during processing.</p>
+
+<h3>
+<a id="obj-content-handling" class="anchor" href="#obj-content-handling" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>OBJ Content Handling</h3>
+
+<p>As mentioned earlier in this document, CSV Import provides the ability to download one content file per imported object.  The content can be an image, a PDF document, an audio recording, or any other content form supported by an accompanying Islandora content model. Specification of the file's path and file name can be provided in OBJ_PREFIX and OBJ key columns, respectively.  The corresponding specification of an object's content model can be provided in a CMODEL key column.</p>
+
+<p>OBJ content files are imported using a Drupal 'hook' function named <em>hook_fetch_OBJ</em> as documented in this module's <em>icg_csv_import.api.php</em> file. </p>
+
+<p>Your <em>hook_fetch_OBJ</em> function will only be called if all three of the following input parameters (see the <em>CSV Import User Interface</em> section of this document) are provided:</p>
+
+<ul>
+<li>a complete and valid path to the content file,</li>
+<li>a valid username with permissions to read the content file, and </li>
+<li>a corresponding, valid password to permit read access to the content path and file name.</li>
+</ul>
+
+<p>The module will concatenate the OBJ_PREFIX and OBJ key fields together, with NO additional separator, and pass the concatenated result to your <em>hook_fetch_OBJ</em> function.</p>
+
+<h3>
+<a id="import-post-processing" class="anchor" href="#import-post-processing" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Import Post-Processing</h3>
+
+<p>Once an object has been successfully created, or updated, from a single line of CSV data, the module will perform the usual sequence of post-ingest actions: </p>
+
+<ol>
+<li>The <em>islandora_add_object</em> function is invoked.  At a minimum, this will generate a new, or updated, DC daastream from the object's MODS datastream.</li>
+<li>The module will regenerate all derivative datastreams as specified by the object's content model (CMODEL) with a call to the <em>islandora_run_derivatives</em> function.</li>
+<li>The module invokes any <em>hook_create_object_post_ops</em> defined by the user.  See <em>icg_csv_import.api.php</em> for details.</li>
+</ol>
+
+<h3>
+<a id="output" class="anchor" href="#output" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Output</h3>
+
+<p>The CSV Import process is primarily intended to ingest new objects into existing Islandora collections, but it also produces an output file to document your import history, and to provide a mechanism for easily updating your imported objects.</p>
+
+<p>The following shows a portion of the output from import of our example data.</p>
+
+<p><img src="documentation/images/Fossils-08.png?raw=true" alt="CSV Output File"></p>
+
+<p>The CSV Import module adds a column at the beginning of each row. The first cell in this column is a time-stamp recording the date and time when the import was initiated. The values in the cells below are the PIDs of the objects generated during the import process. The hashtags in this column render each line in this output file as a comment.  </p>
+
+<p>The output file keeps the same field separator found in the input file, so if the input file was a true CSV file, with comma field delimiters and quotation marks around values, then a true CSV file is output.  If a tab-delimited file is specified as input, a corresponding tab-delimited file is created as output.</p>
+
+<p>The output file retains all comments, including comment lines (where the first character in the first column is a hashtag), from the input file without modification.</p>
+
+<p>The output file also reatins the input CSV headers and data, as well as the constants headers and data.</p>
+
+<h3>
+<a id="re-importing-data" class="anchor" href="#re-importing-data" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Re-Importing Data</h3>
+
+<p>It is possible to edit a CSV output file and easily re-import the data with subtle or even sweeping changes.  When data is re-imported there must be a valid time-stamp at the top of the first column, and each subsequent cell in that column must contain one of the following:</p>
+
+<ul>
+<li>a comment (first character in the cell is a hashtag),</li>
+<li>a valid object PID, or</li>
+<li>nothing - the cell must be completely empty.</li>
+</ul>
+
+<p>When a comment is encountered in the first column, the entire line is treated as a comment (remember our comment/hashtag rules!).</p>
+
+<p>When a valid object PID is encountered in the first column, the corresponding line of data replaces the MODS, and possibly the OBJ, datastream(s) of the identified object.</p>
+
+<p>When an empty cell is encountered in the first column, the corresponding line of data is processed to define a new object.</p>
+
+<p>The image below, with modified cells in yellow, illustrates a case for re-import that you might encounter.</p>
+
+<p><img src="documentation/images/Fossils-09.png?raw=true" alt="Edited CSV Output Ready for Input"></p>
+
+<p>In our fossils sample we discovered, after an initial import, that some objects should have been ingested as compound parents with no content OBJ of their own.  In our example, objects <em>grinnell:17037</em> and <em>grinnell:17061</em> were intended to be <strong>one</strong> object illustrating two similar fossils.  These objects were imported without a corresponding 'parent' compound object to attach themselves to, so we performed the following series of edits <strong>in the output CSV file</strong> to introduce necessary changes.</p>
+
+<ul>
+<li>We first duplicated the row of data that created <em>grinnell:17037</em>, and working in that duplicate row, we removed the '<em># grinnell:17037</em>' comment in the first column, and changed the row's <em>CMODEL</em> from <em>islandora:sp_basic_image</em> to <em>islandora:compoundCModel</em>.</li>
+</ul>
+
+<p>These changes will effectively introduce a new object into the collection (since the first column here is empty), and that new object will have an islandora:compoundCModel content model.  This new object will eventually become the 'parent' of grinnell:17037 and grinnell:17061.</p>
+
+<ul>
+<li>In the rows immediately below the duplicate, we removed the hashtag/comment marker from each of the PIDs, <em>grinnell:17037</em> and <em>grinnell:17061</em>; changed the <em>Import Index</em> values in the second column from <em>2</em> and <em>3</em>, to <em>2.01</em> and <em>2.02</em>; and blanked out the values in the last two columns of data.<br>
+</li>
+</ul>
+
+<p>These changes will cause the system to replace (since there are valid PIDS in the first column) the MODS data of the two existing objects with new MODS records having new <em>Import Index</em> values, and no named contributor.</p>
+
+<ul>
+<li>In the XPath/Key header row we added hashtags to both the <em>OBJ</em> and <em>OBJ_PREFIX</em> keys.<br>
+</li>
+</ul>
+
+<p>This change effectively removes the OBJ and OBJ_PREFIX keys from the import.  Since these keys no longer exist (they have been turned into comments) there is no way for the system to identify a corresponding content object file, so no download of content is initiated.  Consequently, the new compound object will have NO OBJ datastream, and the two updated objects will have new MODS datastreams, but their existing OBJ datastreams will remain unchanged.</p>
+
+<p>The output from our re-import operation will be another complete CSV file, with an updated time-stamp, and comment PID entries in place of the three cells in column one that were updated.  If additional updates are needed this output CSV file can be edited and re-imported. </p>
+
+<p>Rinse and repeat, as often as you like. The possibilities are endless. Powerful stuff indeed!</p>
+
+<h3>
+<a id="launching-a-csv-import" class="anchor" href="#launching-a-csv-import" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Launching a CSV Import</h3>
+
+<p>CSV import processing is driven by a set of ten (10) Drupal variables.  The variables and their default values are:</p>
+
+<table>
+<thead>
+<tr>
+<th>Variable Name</th>
+<th>Required?</th>
+<th>Default Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>icg_csv_import_parent_pid</td>
+<td><strong>Yes</strong></td>
+<td><em><strong>None</strong></em></td>
+</tr>
+<tr>
+<td>icg_csv_import_csv_file_uri</td>
+<td><strong>Yes</strong></td>
+<td><em><strong>None</strong></em></td>
+</tr>
+<tr>
+<td>icg_csv_import_constants_file_uri</td>
+<td>No</td>
+<td><em>None</em></td>
+</tr>
+<tr>
+<td>icg_csv_import_username</td>
+<td>No</td>
+<td><em>None</em></td>
+</tr>
+<tr>
+<td>icg_csv_import_password</td>
+<td>No</td>
+<td><em>None</em></td>
+</tr>
+<tr>
+<td>icg_csv_import_namespace</td>
+<td><strong>Yes</strong></td>
+<td>islandora</td>
+</tr>
+<tr>
+<td>icg_csv_import_delimiter</td>
+<td><strong>Yes</strong></td>
+<td>tab</td>
+</tr>
+<tr>
+<td>icg_csv_import_mods-to-dc</td>
+<td>No</td>
+<td>
+<em>path/to/icg_csv_import</em>/mods-to-dc.xsl</td>
+</tr>
+<tr>
+<td>icg_csv_import_inactive</td>
+<td><strong>Yes</strong></td>
+<td>TRUE</td>
+</tr>
+<tr>
+<td>icg_csv_import_label_xpath</td>
+<td><strong>Yes</strong></td>
+<td>/mods/titleInfo/title</td>
+</tr>
+</tbody>
+</table>
+
+<p>Note that there are two "Required" variables that have NO default.  You must provide values for these variables!</p>
+
+<p>A simple sequence of Drush commands, like the following, can be used to define necessary variables <strong>before</strong> launching an import. </p>
+
+<table>
+<thead>
+<tr>
+<th>Sample Commands</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>cd /var/www/drupal/sites/default</td>
+</tr>
+<tr>
+<td>drush vset icg_csv_import_csv_file_uri '/vagrant/shared/AttributeTest01 - Data.tsv'</td>
+</tr>
+<tr>
+<td>drush vset icg_csv_import_constants_file_uri '/vagrant/shared/AttributeTest01 - Constants.tsv'</td>
+</tr>
+<tr>
+<td>drush vset icg_csv_import_parent_pid 'islandora:sp_large_image_collection'</td>
+</tr>
+<tr>
+<td>drush vset icg_csv_import_username 'ICG'</td>
+</tr>
+<tr>
+<td>drush vset icg_csv_import_password 'anything'</td>
+</tr>
+<tr>
+<td>drush vset icg_csv_import_namespace 'islandora'</td>
+</tr>
+<tr>
+<td>drush vset icg_csv_import_delimiter 'tab'</td>
+</tr>
+<tr>
+<td>drush vset icg_csv_import_mods-to-dc 'sites/all/modules/icg_csv_import/mods-to-dc.xsl'</td>
+</tr>
+<tr>
+<td>drush vset icg_csv_import_inactive TRUE</td>
+</tr>
+<tr>
+<td>drush vset icg_csv_import_label_xpath '/mods/titleInfo/title'</td>
+</tr>
+</tbody>
+</table>
+
+<p>Once the module is installed and the command variables have been defined, with administration rights and a suitably structured CSV file you can launch an import by navigating to the target collection that will contain the imported, or updated, objects, and click the <em>Manage</em> tab like the one shown in our <em>Geology Collection</em> example below.  </p>
+
+<p><img src="documentation/images/Fossils-10.png?raw=true" alt="Sample Collection Screen"></p>
+
+<p>A <em>Manage</em> screen similar to the one shown below should open. The path to this screen is generally of the form: <a href="http://your.server.here/islandora/object/collection:pid/manage">http://your.server.here/islandora/object/collection:pid/manage</a>.</p>
+
+<p><img src="documentation/images/Fossils-11.png?raw=true" alt="Collection Manage Screen"> </p>
+
+<p>In the <em>Manage</em> screen you should find a <em>CSV Import</em> tab or button.  Click that tab, or button, to begin the import process by opening the CSV Import user interface. </p>
+
+<h3>
+<a id="csv-import-review-form" class="anchor" href="#csv-import-review-form" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>CSV Import Review Form</h3>
+
+<p>When invoked, the CSV Import module should present you with a simple 'review' form like the one shown below.</p>
+
+<p><img src="documentation/images/ReviewForm.png?raw=true" alt="CSV Import UI Screen 1"> </p>
+
+<p>Select 'Submit' to accept the input variable values and proceed, or select 'Cancel' to return to the previous page.</p>
+
+<h3>
+<a id="old-csv-import-ui-" class="anchor" href="#old-csv-import-ui-" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>OLD CSV IMPORT UI <em></em>
+</h3>
+
+<p>The user interface consists of two, or in some cases three, input data forms or pages.</p>
+
+<p>The first form/page prompts the user for a number of required and optional parameters.  Becuase the input form is rather large, the example below is presented in two parts.  The user may have to scroll to see the entire form.</p>
+
+<p><img src="documentation/images/Fossils-12.png?raw=true" alt="CSV Import UI Screen 1"> </p>
+
+<p><img src="documentation/images/Fossils-13.png?raw=true" alt="CSV Import UI Screen 2"> </p>
+
+<p>This first page CSV Import form prompts for:</p>
+
+<ul>
+<li>The file to import (the CSV file),</li>
+<li>An optional CSV constants file to import (another CSV file),</li>
+<li>A checkbox to indicate if the CSV file already contains XPaths or not, or
+
+<ul>
+<li>The destination content model (all items need to use the same content model), and</li>
+<li>An Islandora XML input form corresponding to the selected destination content model.</li>
+</ul>
+</li>
+</ul>
+
+<p>The first form/page also solicits input for:</p>
+
+<ul>
+<li>The namespace that new objects will be imported into (all items need to use the same namespace),</li>
+<li>The CSV's field delimiter character (leave this blank to accept the default of tab-delimited fields),</li>
+<li>A checkbox option to ingest new objects with a status of 'Inactive', and</li>
+<li>Content file download credentials in the form of a username and corresponding password.</li>
+</ul>
+
+<p>The second CSV Import form/page changes based on the status of the first checkbox control.  </p>
+
+<ul>
+<li>If XPaths <strong>are</strong> already present in the specified CSV file, the second screen will simply ask for confirmation to proceed.<br>
+</li>
+<li>If XPaths <strong>are not</strong> in the CSV file, the second screen will provide for field-by-field mapping of the CSV file headers to MODS elements, as determined by the destination content model and selected Islandora XML input form.</li>
+</ul>
+
+<h2>
+<a id="troubleshootingissues" class="anchor" href="#troubleshootingissues" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Troubleshooting/Issues</h2>
+
+<p>Having problems or solved a problem? Check out the Islandora google groups for a solution.</p>
+
+<ul>
+<li><a href="https://groups.google.com/forum/?hl=en&amp;fromgroups#!forum/islandora">Islandora Group</a></li>
+<li><a href="https://groups.google.com/forum/?hl=en&amp;fromgroups#!forum/islandora-dev">Islandora Dev Group</a></li>
+</ul>
+
+<h2>
+<a id="maintainerssponsors" class="anchor" href="#maintainerssponsors" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Maintainers/Sponsors</h2>
+
+<p>Current maintainers:</p>
+
+<ul>
+<li><a href="https://github.com/DigitalGrinnell">Mark McFate</a></li>
+<li><a href="https://github.com/hamhpc">Steve Young</a></li>
+<li><a href="https://github.com/dhinitiative">Peter MacDonald</a></li>
+<li><a href="https:/github.com/jgd1">Jessika Drmacich</a></li>
+</ul>
+
+<h2>
+<a id="development" class="anchor" href="#development" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Development</h2>
+
+<p>If you would like to contribute to this module, please check out <a href="CONTRIBUTING.md">CONTRIBUTING.md</a>. In addition, we have helpful <a href="https://github.com/Islandora/islandora/wiki#wiki-documentation-for-developers">Documentation for Developers</a> info, as well as our <a href="http://islandora.ca/developers">Developers</a> section on the <a href="http://islandora.ca">Islandora.ca</a> site.</p>
+
+<h2>
+<a id="license" class="anchor" href="#license" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>License</h2>
+
+<p><a href="http://www.gnu.org/licenses/gpl-3.0.txt">GPLv3</a></p>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">ICG CSV Import maintained by <a href="https://github.com/Islandora-Collaboration-Group">Islandora-Collaboration-Group</a></p>
+        <p>Published with <a href="https://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
