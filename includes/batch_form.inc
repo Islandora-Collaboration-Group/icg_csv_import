@@ -14,7 +14,9 @@
  drush vset icg_csv_import_inactive TRUE
  drush vset icg_csv_import_label_xpath '/mods/titleInfo/title'
  drush vset icg_csv_import_mods-to-dc 'mods-to-dc.xsl'
+ drush vset icg_csv_import_fedora_repo 'https://repository7.grinnell.edu:8080/fedora'  <-- Not used just yet.
  *
+ *  Use 'drush vdel <variable name>' to unset a variable.
  */
 
 /**

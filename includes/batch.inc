@@ -23,7 +23,7 @@ function icg_csv_import_build_batch( ) {
     'init_message' => t('Commencing'),
     'progress_message' => t('Processed @current out of @total.'),
     'error_message' => t('An error occurred during processing'),
-    'finished' => 'icg_csv_import_import_finish ed',
+    'finished' => 'icg_csv_import_import_finished',
   );
 
   if (($csv_filename = variable_get('icg_csv_import_csv_file_uri', 'Undefined!')) === 'Undefined!') {
@@ -829,6 +829,12 @@ function _icg_make_new_object($existing, $parent_pid, $ns, $cmodel, $label, $mod
 
   // Do some derivative work if needed.
   if ($obj && $temp) { islandora_run_derivatives($object, 'OBJ'); }
+
+  /* This would be a good place to force a FGSearch/Solr index update, but how?
+  if ($fedora = variable_get('icg_csv_import_fedora_repo', FALSE)) {
+    $url = $fedora . 'gsearch/rest/rest?operation=updateIndex&action=fromPid&value=' . urlencode($pid);
+    $result = curl_query( $url );
+  } */
 
   // Perform any object post-creation cleanup.
   module_invoke_all('create_object_post_ops', $pid);
